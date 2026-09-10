@@ -1,0 +1,41 @@
+CRM Project 
+
+Name: TTM CRM
+
+What the project has
+
+- Customer Id
+- Customer Name and Company Name
+- Phone Number
+- Customer/Compnay Email (Optional)
+- Customer Type (New, Old)
+- Purpose of Call
+- If New Caller (Source: Social, Digital media, Refferal)
+- OLd Call no options for Source
+- Remark Convo Remark
+- Customer Stage (Contact, Lead, Customer, Client, the web will give tag beside on the convo it has the company)
+- User (Sale or Someone who have convo with Customer)
+
+Feature
+
+- Daily reports 
+  - Sales report
+  - Source report
+  - Branch report
+- Most call including minutes
+- product sales report
+- Weekly Sales Report
+- Monthly Sale report
+- Filter data
+  - Customer data
+  - Sales
+  - product
+- Product Store
+  - Item name
+  - Item Id
+  - Item Description
+  - Item price
+  - item Edit
+-Improt and Export datas
+  - From Google sheet
+  - From Exel and Google contact
