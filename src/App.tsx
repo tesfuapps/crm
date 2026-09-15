@@ -215,7 +215,6 @@ export function App() {
       }
     }
     setSales(prev => [newSale, ...prev]);
-    // Also update the customer's last contact date
     const updatedCust = customers.find(c => c.id === newSale.customerId);
     if (updatedCust) {
       setCustomers(prev => prev.map(c =>
@@ -224,10 +223,34 @@ export function App() {
           : c
       ));
     }
-  }, [customers, checkAndTriggerReassignment]);
+    // Activity Notification
+    const notif: Notification = {
+      id: 'n_' + Date.now(),
+      recipientUserId: currentUser.id,
+      type: 'system',
+      title: '💰 New Sale Recorded',
+      message: `${updatedCust?.customerName || 'Customer'} purchased items for ${newSale.saleAmount.toLocaleString()} ETB.`,
+      read: false,
+      createdAt: new Date().toISOString(),
+    };
+    setNotifications(prev => [notif, ...prev]);
+    addToast(`New sale recorded: ${newSale.saleAmount.toLocaleString()} ETB`, 'success');
+  }, [customers, checkAndTriggerReassignment, currentUser.id, addToast]);
 
   const handleSaveCallLog = (newLog: CallLog, updatedCustomer?: Partial<Customer>, newCustomer?: Customer) => {
-    if (newCustomer) { setCustomers(prev => [newCustomer, ...prev]); }
+    if (newCustomer) {
+      setCustomers(prev => [newCustomer, ...prev]);
+      const notif: Notification = {
+        id: 'n_' + Date.now(),
+        recipientUserId: currentUser.id,
+        type: 'system',
+        title: '👤 New Customer Registered',
+        message: `${newCustomer.customerName} registered successfully.`,
+        read: false,
+        createdAt: new Date().toISOString(),
+      };
+      setNotifications(prev => [notif, ...prev]);
+    }
     setCallLogs(prev => [newLog, ...prev]);
     if (updatedCustomer && Object.keys(updatedCustomer).length > 0) {
       setCustomers(prev => prev.map(c => {
@@ -235,20 +258,87 @@ export function App() {
         return c;
       }));
     }
+    const cust = customers.find(c => c.id === newLog.customerId) || newCustomer;
+    const notifLog: Notification = {
+      id: 'n_' + (Date.now() + 1),
+      recipientUserId: currentUser.id,
+      type: 'system',
+      title: '📞 Call Logged',
+      message: `Call logged for ${cust?.customerName || 'Client'}: ${newLog.purpose} (${newLog.durationMinutes}m).`,
+      read: false,
+      createdAt: new Date().toISOString(),
+    };
+    setNotifications(prev => [notifLog, ...prev]);
+    addToast('Call log saved successfully', 'success');
   };
 
-  const handleAddCustomer = (newCust: Customer) => { setCustomers(prev => [newCust, ...prev]); };
-  const handleUpdateCustomer = (updatedCust: Customer) => { setCustomers(prev => prev.map(c => c.id === updatedCust.id ? updatedCust : c)); };
+  const handleAddCustomer = (newCust: Customer) => {
+    setCustomers(prev => [newCust, ...prev]);
+    const notif: Notification = {
+      id: 'n_' + Date.now(),
+      recipientUserId: currentUser.id,
+      type: 'system',
+      title: '👤 Client Added',
+      message: `New printing client added: ${newCust.customerName}.`,
+      read: false,
+      createdAt: new Date().toISOString(),
+    };
+    setNotifications(prev => [notif, ...prev]);
+    addToast(`Added client ${newCust.customerName}`, 'success');
+  };
+
+  const handleUpdateCustomer = (updatedCust: Customer) => {
+    setCustomers(prev => prev.map(c => c.id === updatedCust.id ? updatedCust : c));
+    const notif: Notification = {
+      id: 'n_' + Date.now(),
+      recipientUserId: currentUser.id,
+      type: 'system',
+      title: '✏️ Client Updated',
+      message: `Updated profile for ${updatedCust.customerName}.`,
+      read: false,
+      createdAt: new Date().toISOString(),
+    };
+    setNotifications(prev => [notif, ...prev]);
+  };
+
   const handleDeleteCustomer = (customerId: string) => {
+    const cust = customers.find(c => c.id === customerId);
     setCustomers(prev => prev.filter(c => c.id !== customerId));
     setCallLogs(prev => prev.filter(cl => cl.customerId !== customerId));
     if (selectedCustomerForDetail?.id === customerId) setSelectedCustomerForDetail(null);
+    const notif: Notification = {
+      id: 'n_' + Date.now(),
+      recipientUserId: currentUser.id,
+      type: 'system',
+      title: '🗑️ Client Deleted',
+      message: `Removed client ${cust?.customerName || customerId} from system.`,
+      read: false,
+      createdAt: new Date().toISOString(),
+    };
+    setNotifications(prev => [notif, ...prev]);
+    addToast('Customer record deleted', 'info');
   };
+
   const handleUpdateCustomerStage = (customerId: string, newStage: CustomerStage) => {
+    let custName = '';
     setCustomers(prev => prev.map(c => {
-      if (c.id === customerId) return { ...c, customerStage: newStage, updatedAt: new Date().toISOString() };
+      if (c.id === customerId) {
+        custName = c.customerName;
+        return { ...c, customerStage: newStage, updatedAt: new Date().toISOString() };
+      }
       return c;
     }));
+    const notif: Notification = {
+      id: 'n_' + Date.now(),
+      recipientUserId: currentUser.id,
+      type: 'system',
+      title: '📊 Stage Changed',
+      message: `${custName || 'Client'} stage updated to ${newStage}.`,
+      read: false,
+      createdAt: new Date().toISOString(),
+    };
+    setNotifications(prev => [notif, ...prev]);
+    addToast(`${custName || 'Client'} moved to ${newStage}`, 'success');
   };
   const handleSelectCustomer = (customer: Customer) => { setSelectedCustomerForDetail(customer); setActiveTab('customers'); };
 
