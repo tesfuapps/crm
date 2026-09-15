@@ -21,6 +21,7 @@ import { IncomingCallWidget } from './components/IncomingCallWidget';
 import { CalendarFollowUpsView } from './components/CalendarFollowUpsView';
 import { LeaderboardView } from './components/LeaderboardView';
 import { CustomerLeadboardView } from './components/CustomerLeadboardView';
+import { MainCommunicationFeedView } from './components/MainCommunicationFeedView';
 
 export function App() {
   const [branches, setBranches] = useState<Branch[]>(() => {
@@ -304,6 +305,11 @@ export function App() {
             <CustomerLeadboardView customers={customers} callLogs={callLogs} sales={sales} branches={branches}
               users={users} theme={theme} onSelectCustomer={handleSelectCustomer}
               onOpenLogCall={() => setIsIncomingCallOpen(true)} />
+          )}
+          {activeTab === 'communications' && (
+            <MainCommunicationFeedView customers={customers} callLogs={callLogs} users={users} branches={branches}
+              currentUser={currentUser} selectedBranchId={selectedBranchId} theme={theme}
+              onSelectCustomer={handleSelectCustomer} onOpenLogCall={() => setIsIncomingCallOpen(true)} />
           )}
           {activeTab === 'calendar' && (
             <CalendarFollowUpsView customers={customers} branches={branches} users={users} selectedBranchId={selectedBranchId}

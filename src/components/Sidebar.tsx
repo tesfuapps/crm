@@ -9,7 +9,8 @@ import {
   Settings,
   Menu,
   Calendar,
-  Trophy
+  Trophy,
+  PhoneCall
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -21,6 +22,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'customers', label: 'Printing Clients', icon: Users },
+    { id: 'communications', label: 'Communications Feed', icon: PhoneCall },
     { id: 'customer-leadboard', label: 'Customer Leadboard', icon: Trophy },
     { id: 'calendar', label: 'Calendar & Reminders', icon: Calendar },
     { id: 'leaderboard', label: 'Team Scoreboard', icon: Trophy },

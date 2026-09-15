@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Customer, CallLog, ProductSale, Branch } from '../types/crm';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, FunnelChart, Funnel, LabelList } from 'recharts';
-import { BarChart3, TrendingUp, Building2, Download, Award, DollarSign, Brain, Sparkles, AlertTriangle, ChevronRight } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { BarChart3, TrendingUp, Building2, Download, Award, DollarSign, Brain, Sparkles, AlertTriangle, ChevronRight, FileImage, FileText } from 'lucide-react';
 
 interface ReportsViewProps {
   customers: Customer[];
@@ -19,6 +19,9 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
   const [reportPeriod, setReportPeriod] = useState<'daily' | 'weekly' | 'monthly'>('weekly');
   const [showAIInsights, setShowAIInsights] = useState(false);
 
+  const barChartRef = useRef<HTMLDivElement>(null);
+  const pieChartRef = useRef<HTMLDivElement>(null);
+
   const filteredCustomers = selectedBranchId === 'all' ? customers : customers.filter(c => c.branchId === selectedBranchId);
   const filteredSales = selectedBranchId === 'all'
     ? sales
@@ -27,18 +30,12 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
   const sourceCounts: Record<string, number> = {};
   filteredCustomers.forEach(c => { sourceCounts[c.source] = (sourceCounts[c.source] || 0) + 1; });
   const sourceData = Object.keys(sourceCounts).map(source => ({ name: source, value: sourceCounts[source] }));
-  const COLORS = ['#0F766E', '#0284C7', '#D97706', '#7C3AED', '#16A34A', '#DB2777'];
+  const COLORS = ['#F59E0B', '#0284C7', '#10B981', '#8B5CF6', '#EC4899', '#06B6D4'];
 
   const contactCount = filteredCustomers.filter(c => c.customerStage === 'Contact').length;
   const leadCount = filteredCustomers.filter(c => c.customerStage === 'Lead').length;
   const customerCount = filteredCustomers.filter(c => c.customerStage === 'Customer').length;
   const clientCount = filteredCustomers.filter(c => c.customerStage === 'Client').length;
-  const funnelData = [
-    { name: 'Contact', value: contactCount + leadCount + customerCount + clientCount, fill: '#0284C7' },
-    { name: 'Lead', value: leadCount + customerCount + clientCount, fill: '#D97706' },
-    { name: 'Customer', value: customerCount + clientCount, fill: '#16A34A' },
-    { name: 'Client', value: clientCount, fill: '#7C3AED' },
-  ];
 
   const branchRevenueData = branches.map(b => {
     const bCustomers = customers.filter(c => c.branchId === b.id);
@@ -62,27 +59,86 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
     document.body.removeChild(link);
   };
 
-  const handleExportXLSX = () => {
-    const csvContent = 'Customer Name,Company,Phone,Stage,Source,Deal Value (ETB),Last Contacted,Next Follow-up\n' +
-      filteredCustomers.map(c => `"${c.customerName}","${c.companyName || ''}","${c.phoneNumber}","${c.customerStage}","${c.source}",${c.dealValue},${c.lastContactedDate || ''},${c.nextFollowUpDate || ''}`).join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `ttm_crm_full_export_${reportPeriod}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const handleExportChartImage = (containerRef: React.RefObject<HTMLDivElement>, format: 'png' | 'jpg', filename: string) => {
+    if (!containerRef.current) return;
+    const svgElement = containerRef.current.querySelector('svg');
+    if (!svgElement) return;
+
+    const svgString = new XMLSerializer().serializeToString(svgElement);
+    const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+    const URL = window.URL || window.webkitURL || window;
+    const blobURL = URL.createObjectURL(svgBlob);
+
+    const image = new Image();
+    image.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = svgElement.clientWidth || 600;
+      canvas.height = svgElement.clientHeight || 400;
+      const context = canvas.getContext('2d');
+      if (!context) return;
+
+      if (format === 'jpg') {
+        context.fillStyle = '#18181b';
+        context.fillRect(0, 0, canvas.width, canvas.height);
+      }
+
+      context.drawImage(image, 0, 0);
+      const mimeType = format === 'png' ? 'image/png' : 'image/jpeg';
+      const uri = canvas.toDataURL(mimeType, 1.0);
+
+      const downloadLink = document.createElement('a');
+      downloadLink.href = uri;
+      downloadLink.download = `${filename}.${format}`;
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+    };
+    image.src = blobURL;
   };
 
-  const cardBg = isDark ? 'bg-[#18181b] border-zinc-800/60' : 'bg-white border-slate-200';
+  const handleExportPDF = (title: string, dataSummary: string) => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>${title} - TTM CRM Report</title>
+          <style>
+            body { font-family: Inter, sans-serif; padding: 40px; color: #111; background: #fff; }
+            h1 { color: #0F766E; font-size: 24px; margin-bottom: 4px; }
+            p { color: #555; font-size: 14px; margin-bottom: 20px; }
+            .card { border: 1px solid #ddd; border-radius: 8px; padding: 20px; margin-bottom: 20px; background: #fdfdfd; }
+            table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+            th, td { border: 1px solid #ddd; padding: 10px; font-size: 13px; text-align: left; }
+            th { background: #0F766E; color: #fff; }
+          </style>
+        </head>
+        <body>
+          <h1>TTM CRM Executive Report</h1>
+          <p>Generated on ${new Date().toLocaleDateString()} • Period: ${reportPeriod.toUpperCase()}</p>
+          <div class="card">
+            <h3>${title}</h3>
+            <p>${dataSummary}</p>
+          </div>
+          <table>
+            <tr><th>Metric</th><th>Value</th></tr>
+            <tr><td>Total Revenue</td><td>${totalRevenue.toLocaleString()} ETB</td></tr>
+            <tr><td>Active Customers</td><td>${filteredCustomers.length}</td></tr>
+            <tr><td>Total Call Logs</td><td>${callLogs.length}</td></tr>
+            <tr><td>Client Conversion Rate</td><td>${filteredCustomers.length > 0 ? ((clientCount / filteredCustomers.length) * 100).toFixed(0) : '0'}%</td></tr>
+          </table>
+          <script>window.print();</script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
+  const cardBg = isDark ? 'bg-[#18181b] border-zinc-800/60 shadow-lg' : 'bg-white border-slate-200 shadow-sm';
   const cardText = isDark ? 'text-zinc-100' : 'text-slate-900';
   const subText = isDark ? 'text-zinc-400' : 'text-slate-500';
-  const btnBg = isDark ? 'bg-zinc-800 text-zinc-200 hover:bg-zinc-700' : 'bg-slate-100 text-slate-700 hover:bg-slate-200';
   const primaryBtn = isDark ? 'bg-amber-600 hover:bg-amber-700 text-white' : 'bg-teal-700 hover:bg-teal-800 text-white';
-  const chartBg = isDark ? 'bg-zinc-950/40' : 'bg-slate-50';
 
-  // AI-generated insights
   const overdueFollowups = filteredCustomers.filter(c => c.nextFollowUpDate && c.nextFollowUpDate < new Date().toISOString().split('T')[0] && c.customerStage !== 'Client');
   const hotLeadsCount = filteredCustomers.filter(c => c.leadPriority === 'Hot').length;
   const hotLeadsValue = filteredCustomers.filter(c => c.leadPriority === 'Hot').reduce((s, c) => s + c.dealValue, 0);
@@ -96,70 +152,70 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
 
   return (
     <div className="space-y-6">
-      <div className={`p-6 rounded-xl border flex flex-col md:flex-row md:items-center justify-between gap-4 ${cardBg}`}>
+      <div className={`p-6 rounded-2xl border flex flex-col md:flex-row md:items-center justify-between gap-4 ${cardBg}`}>
         <div>
           <h2 className="text-xl font-bold text-white">Sales & Operations Analytics</h2>
-          <p className={`text-sm mt-0.5 ${subText}`}>Comprehensive reporting across leads, sources, branch revenue, and conversion funnel.</p>
+          <p className={`text-sm mt-0.5 ${subText}`}>Modern interactive reports with high-resolution export for PNG, JPG, and PDF.</p>
         </div>
         <div className="flex items-center gap-3">
-          <div className="flex bg-zinc-900 p-1 rounded-lg text-xs font-medium">
+          <div className="flex bg-zinc-900 p-1 rounded-xl text-xs font-medium">
             {(['daily', 'weekly', 'monthly'] as const).map(p => (
-              <button key={p} onClick={() => setReportPeriod(p)} className={`px-3 py-1.5 rounded-md transition-colors capitalize ${reportPeriod === p ? 'bg-zinc-800 text-zinc-100' : 'text-zinc-400 hover:text-zinc-200'}`}>{p}</button>
+              <button key={p} onClick={() => setReportPeriod(p)} className={`px-3 py-1.5 rounded-lg transition-colors capitalize ${reportPeriod === p ? 'bg-zinc-800 text-amber-300 font-bold' : 'text-zinc-400 hover:text-zinc-200'}`}>{p}</button>
             ))}
           </div>
-          <button onClick={handleExportXLSX} className={`px-4 py-2 ${primaryBtn} rounded-lg text-xs font-medium flex items-center gap-2`}>
-            <Download className="w-3.5 h-3.5" /> <span>Export XLSX/CSV</span>
+          <button onClick={() => handleExportPDF('Executive Revenue & Lead Summary', 'Comprehensive branch and lead source distribution analysis.')} className={`px-4 py-2 ${primaryBtn} rounded-xl text-xs font-semibold flex items-center gap-2 shadow-sm`}>
+            <Download className="w-3.5 h-3.5" /> <span>Export PDF Report</span>
           </button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className={`p-6 rounded-xl border flex items-center justify-between ${cardBg}`}>
+        <div className={`p-6 rounded-2xl border flex items-center justify-between ${cardBg}`}>
           <div>
-            <p className={`text-xs font-semibold uppercase tracking-wider ${subText}`}>Total Revenue ({reportPeriod})</p>
+            <p className={`text-xs font-bold uppercase tracking-wider ${subText}`}>Total Revenue ({reportPeriod})</p>
             <h3 className="text-2xl font-bold text-white mt-1">{totalRevenue.toLocaleString()} ETB</h3>
-            <p className="text-xs text-emerald-400 mt-1 font-medium flex items-center gap-1"><TrendingUp className="w-3.5 h-3.5" /> +18.4% vs previous period</p>
+            <p className="text-xs text-emerald-400 mt-1 font-semibold flex items-center gap-1"><TrendingUp className="w-3.5 h-3.5" /> +18.4% vs previous period</p>
           </div>
-          <div className="w-12 h-12 rounded-lg bg-emerald-950/40 text-emerald-400 flex items-center justify-center"><DollarSign className="w-6 h-6" /></div>
+          <div className="w-12 h-12 rounded-xl bg-emerald-950/40 text-emerald-400 flex items-center justify-center border border-emerald-800/60"><DollarSign className="w-6 h-6" /></div>
         </div>
-        <div className={`p-6 rounded-xl border flex items-center justify-between ${cardBg}`}>
+        <div className={`p-6 rounded-2xl border flex items-center justify-between ${cardBg}`}>
           <div>
-            <p className={`text-xs font-semibold uppercase tracking-wider ${subText}`}>Active Customers</p>
+            <p className={`text-xs font-bold uppercase tracking-wider ${subText}`}>Active Customers</p>
             <h3 className="text-2xl font-bold text-white mt-1">{filteredCustomers.length}</h3>
-            <p className="text-xs text-amber-400 mt-1 font-medium">Across selected branches</p>
+            <p className="text-xs text-amber-400 mt-1 font-semibold">Across selected branches</p>
           </div>
-          <div className="w-12 h-12 rounded-lg bg-amber-950/40 text-amber-400 flex items-center justify-center"><Award className="w-6 h-6" /></div>
+          <div className="w-12 h-12 rounded-xl bg-amber-950/40 text-amber-400 flex items-center justify-center border border-amber-800/60"><Award className="w-6 h-6" /></div>
         </div>
-        <div className={`p-6 rounded-xl border flex items-center justify-between ${cardBg}`}>
+        <div className={`p-6 rounded-2xl border flex items-center justify-between ${cardBg}`}>
           <div>
-            <p className={`text-xs font-semibold uppercase tracking-wider ${subText}`}>Total Call Logs</p>
+            <p className={`text-xs font-bold uppercase tracking-wider ${subText}`}>Total Call Logs</p>
             <h3 className="text-2xl font-bold text-white mt-1">{callLogs.length}</h3>
-            <p className="text-xs text-purple-400 mt-1 font-medium">Recorded agent calls</p>
+            <p className="text-xs text-purple-400 mt-1 font-semibold">Recorded agent calls</p>
           </div>
-          <div className="w-12 h-12 rounded-lg bg-purple-950/40 text-purple-400 flex items-center justify-center"><BarChart3 className="w-6 h-6" /></div>
+          <div className="w-12 h-12 rounded-xl bg-purple-950/40 text-purple-400 flex items-center justify-center border border-purple-800/60"><BarChart3 className="w-6 h-6" /></div>
         </div>
       </div>
 
       {/* AI Insights Toggle */}
       <div>
-        <button onClick={() => setShowAIInsights(!showAIInsights)} className={`w-full ${cardBg} rounded-xl border p-4 flex items-center justify-between cursor-pointer hover:border-amber-700 transition-colors`}>
+        <button onClick={() => setShowAIInsights(!showAIInsights)} className={`w-full ${cardBg} rounded-2xl border p-4 flex items-center justify-between cursor-pointer hover:border-amber-700 transition-colors`}>
           <div className="flex items-center gap-3">
             <Brain className={`w-5 h-5 ${showAIInsights ? 'text-amber-400' : 'text-zinc-500'}`} />
             <span className="font-bold text-white text-sm">AI Insights & Forecasting</span>
-            <span className="text-[10px] bg-amber-950/40 text-amber-300 px-2 py-0.5 rounded border border-amber-800/60">BETA</span>
+            <span className="text-[10px] bg-amber-950/40 text-amber-300 px-2.5 py-0.5 rounded-full border border-amber-800/60 font-semibold">BETA</span>
           </div>
           <ChevronRight className={`w-4 h-4 text-zinc-500 transition-transform ${showAIInsights ? 'rotate-90' : ''}`} />
         </button>
 
         {showAIInsights && (
-          <div className={`mt-4 rounded-xl border ${cardBg} overflow-hidden`}>
+          <div className={`mt-4 rounded-2xl border ${cardBg} overflow-hidden`}>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-0">
-              <div className={`p-6 border-b ${isDark ? 'border-zinc-800/60' : 'border-slate-200'}`}>
+              <div className={`p-6 border-b md:border-b-0 md:border-r ${isDark ? 'border-zinc-800/60' : 'border-slate-200'}`}>
                 <h4 className="font-bold text-white text-sm mb-3 flex items-center gap-2">
                   <Sparkles className="w-4 h-4 text-amber-400" /> Sales Forecast
                 </h4>
                 <div className="space-y-2">
-                  <div className={`text-sm ${subText}`}>Forecasted deal value (Leads + Customers): <span className="text-emerald-400 font-bold">{filteredCustomers.filter(c => c.customerStage === 'Lead' || c.customerStage === 'Customer').reduce((s, c) => s + c.dealValue, 0).toLocaleString()} ETB</span></div>
+                  <div className={`text-sm ${subText}`}>Forecasted deal value: <span className="text-emerald-400 font-bold">{filteredCustomers.filter(c => c.customerStage === 'Lead' || c.customerStage === 'Customer').reduce((s, c) => s + c.dealValue, 0).toLocaleString()} ETB</span></div>
                   <div className={`text-sm ${subText}`}>Hot leads needing attention: <span className="text-red-400 font-bold">{hotLeadsCount}</span></div>
                   <div className={`text-sm ${subText}`}>Overdue follow-ups: <span className="text-amber-400 font-bold">{overdueFollowups.length}</span></div>
                 </div>
@@ -173,45 +229,65 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                     <p key={i} className={`text-sm ${subText} flex items-start gap-2`}><span className="text-amber-400 mt-0.5">•</span> {note}</p>
                   ))}
                 </div>
-                {filteredCustomers.filter(c => c.leadPriority === 'Hot' && c.customerStage !== 'Client').slice(0, 3).length > 0 && (
-                  <div className="mt-3 pt-3 border-t border-zinc-800/60">
-                    <p className="text-xs font-bold text-zinc-400 mb-2">Top Hot Leads:</p>
-                    {filteredCustomers.filter(c => c.leadPriority === 'Hot' && c.customerStage !== 'Client').slice(0, 3).map(c => (
-                      <div key={c.id} className={`text-xs ${subText} flex items-center gap-1 mb-1`}>
-                        <span className="text-red-400 font-bold">🔥</span> {c.customerName} — {c.dealValue.toLocaleString()} ETB
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
             </div>
           </div>
         )}
       </div>
 
+      {/* Modern Charts Grid with PNG, JPG, PDF Export Actions */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className={`p-6 rounded-xl border ${cardBg}`}>
-          <h3 className={`font-bold mb-4 flex items-center gap-2 ${cardText}`}><Building2 className="w-4 h-4 text-amber-400" /> <span>Branch Revenue Comparison (ETB)</span></h3>
+        {/* Branch Revenue Comparison */}
+        <div className={`p-6 rounded-2xl border ${cardBg} space-y-4`} ref={barChartRef}>
+          <div className="flex items-center justify-between">
+            <h3 className={`font-bold flex items-center gap-2 ${cardText}`}><Building2 className="w-4 h-4 text-amber-400" /> <span>Branch Revenue Comparison (ETB)</span></h3>
+            <div className="flex items-center gap-1.5">
+              <button onClick={() => handleExportChartImage(barChartRef, 'png', 'branch_revenue_chart')} className="px-2 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded text-[11px] font-semibold flex items-center gap-1" title="Download PNG">
+                <FileImage className="w-3 h-3 text-sky-400" /> PNG
+              </button>
+              <button onClick={() => handleExportChartImage(barChartRef, 'jpg', 'branch_revenue_chart')} className="px-2 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded text-[11px] font-semibold flex items-center gap-1" title="Download JPG">
+                <FileImage className="w-3 h-3 text-amber-400" /> JPG
+              </button>
+              <button onClick={() => handleExportPDF('Branch Revenue Comparison', 'Branch revenue breakdown across Bole, Mexico, and Piassa show-rooms.')} className="px-2 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded text-[11px] font-semibold flex items-center gap-1" title="Download PDF">
+                <FileText className="w-3 h-3 text-emerald-400" /> PDF
+              </button>
+            </div>
+          </div>
           <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={branchRevenueData}>
-                <XAxis dataKey="name" stroke="#64748B" fontSize={12} />
-                <YAxis stroke="#64748B" fontSize={12} />
-                <Tooltip formatter={(val: any) => [`${Number(val).toLocaleString()} ETB`, 'Revenue']} />
-                <Bar dataKey="revenue" fill="#0F766E" radius={[6, 6, 0, 0]} />
+                <XAxis dataKey="name" stroke="#A1A1AA" fontSize={12} tickLine={false} />
+                <YAxis stroke="#A1A1AA" fontSize={12} tickLine={false} axisLine={false} />
+                <Tooltip contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', borderRadius: '10px', color: '#fff', fontSize: '12px' }} formatter={(val: any) => [`${Number(val).toLocaleString()} ETB`, 'Revenue']} />
+                <Bar dataKey="revenue" fill="#F59E0B" radius={[8, 8, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
-        <div className={`p-6 rounded-xl border ${cardBg}`}>
-          <h3 className={`font-bold mb-4 flex items-center gap-2 ${cardText}`}><TrendingUp className="w-4 h-4 text-amber-400" /> <span>Lead Source Distribution</span></h3>
+
+        {/* Lead Source Distribution */}
+        <div className={`p-6 rounded-2xl border ${cardBg} space-y-4`} ref={pieChartRef}>
+          <div className="flex items-center justify-between">
+            <h3 className={`font-bold flex items-center gap-2 ${cardText}`}><TrendingUp className="w-4 h-4 text-amber-400" /> <span>Lead Source Distribution</span></h3>
+            <div className="flex items-center gap-1.5">
+              <button onClick={() => handleExportChartImage(pieChartRef, 'png', 'lead_source_chart')} className="px-2 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded text-[11px] font-semibold flex items-center gap-1" title="Download PNG">
+                <FileImage className="w-3 h-3 text-sky-400" /> PNG
+              </button>
+              <button onClick={() => handleExportChartImage(pieChartRef, 'jpg', 'lead_source_chart')} className="px-2 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded text-[11px] font-semibold flex items-center gap-1" title="Download JPG">
+                <FileImage className="w-3 h-3 text-amber-400" /> JPG
+              </button>
+              <button onClick={() => handleExportPDF('Lead Source Distribution', 'Breakdown of customer acquisition sources (Telegram, Facebook, Referral, etc.).')} className="px-2 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded text-[11px] font-semibold flex items-center gap-1" title="Download PDF">
+                <FileText className="w-3 h-3 text-emerald-400" /> PDF
+              </button>
+            </div>
+          </div>
           <div className="h-72 flex items-center justify-center">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Pie data={sourceData} cx="50%" cy="50%" outerRadius={85} dataKey="value" label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}>
-                  {sourceData.map((_, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                <Pie data={sourceData} cx="50%" cy="50%" outerRadius={85} dataKey="value" label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`} labelLine={{ stroke: '#71717A' }}>
+                  {sourceData.map((_, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="#18181b" strokeWidth={2} />)}
                 </Pie>
-                <Tooltip />
+                <Tooltip contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', borderRadius: '10px', color: '#fff', fontSize: '12px' }} />
               </PieChart>
             </ResponsiveContainer>
           </div>
