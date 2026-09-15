@@ -170,3 +170,72 @@ Output JSON:
     };
   }
 }
+
+/**
+ * Generate a personalized WhatsApp/Telegram follow-up message draft for a customer
+ */
+export async function generateAIFollowUpMessage(
+  customer: Customer,
+  callLogs: CallLog[]
+): Promise<string> {
+  const apiKey = getGeminiApiKey();
+  const recentCall = callLogs.filter(cl => cl.customerId === customer.id)[0];
+
+  const prompt = `You are a professional sales executive for TTM CRM in Addis Ababa.
+Write a polite, engaging follow-up message in English (with warm local professional tone) for this client via WhatsApp/Telegram:
+- Client Name: ${customer.customerName}
+- Company: ${customer.companyName || 'Print Shop'}
+- Stage: ${customer.customerStage}
+- Last Topic: ${recentCall ? recentCall.purpose : 'Printing equipment inquiry'}
+- Remark: ${recentCall ? recentCall.remark : 'General interest in heat press and sublimation blanks'}
+
+Keep it under 4 sentences, polite, and include a clear call-to-action regarding showroom visits or delivery in Addis Ababa.`;
+
+  try {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.5 } }),
+      }
+    );
+    if (!response.ok) throw new Error('API failed');
+    const data = await response.json();
+    return data.candidates?.[0]?.content?.parts?.[0]?.text || `Hello ${customer.customerName}, following up from TTM CRM regarding your inquiry. Let us know when you would like to visit our Bole or Mexico showroom!`;
+  } catch (err) {
+    return `Hello ${customer.customerName}! Following up from TTM CRM regarding your inquiry on printing machinery and sublimation blanks. Would you like to stop by our showroom for a live demo this week?`;
+  }
+}
+
+/**
+ * Conversational AI Sales Advisor for answering CRM and sales strategy queries
+ */
+export async function askAISalesAdvisor(query: string, customers: Customer[]): Promise<string> {
+  const apiKey = getGeminiApiKey();
+  const hotLeads = customers.filter(c => c.leadPriority === 'Hot').length;
+  const totalValue = customers.reduce((s, c) => s + c.dealValue, 0);
+
+  const prompt = `You are the AI Sales Advisor for TTM CRM (Addis Ababa printing machinery distributor).
+Context: ${customers.length} total clients, ${hotLeads} hot leads, total deal value ${totalValue.toLocaleString()} ETB.
+User Question: "${query}"
+
+Provide a concise, practical, professional sales advisor response (under 3 paragraphs).`;
+
+  try {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.4 } }),
+      }
+    );
+    if (!response.ok) throw new Error('API failed');
+    const data = await response.json();
+    return data.candidates?.[0]?.content?.parts?.[0]?.text || 'Based on your CRM data, prioritize hot leads with prompt follow-ups and live showroom demonstrations.';
+  } catch (err) {
+    return `Based on your CRM metrics (${customers.length} clients, ${hotLeads} hot leads), ensure your sales reps schedule prompt showroom demos at Bole or Mexico Hub to accelerate closing deals.`;
+  }
+}
+
