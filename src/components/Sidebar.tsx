@@ -7,20 +7,23 @@ import {
   Package, 
   ArrowLeftRight, 
   Settings,
-  PhoneIncoming
+  Menu,
+  Calendar,
+  Trophy
 } from 'lucide-react';
 
 interface SidebarProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
-  onOpenIncomingCall: () => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onOpenIncomingCall }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => {
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'customers', label: 'Printing Clients', icon: Users },
-    { id: 'pipeline', label: 'Pipeline Board', icon: Columns3 },
+    { id: 'customer-leadboard', label: 'Customer Leadboard', icon: Trophy },
+    { id: 'calendar', label: 'Calendar & Reminders', icon: Calendar },
+    { id: 'leaderboard', label: 'Team Scoreboard', icon: Trophy },
     { id: 'reports', label: 'Reports', icon: BarChart3 },
     { id: 'products', label: 'Product Store', icon: Package },
     { id: 'import-export', label: 'Import / Export', icon: ArrowLeftRight },
@@ -28,33 +31,21 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onOpe
   ];
 
   return (
-    <aside className="w-64 bg-slate-900 text-slate-100 flex flex-col h-screen fixed left-0 top-0 border-r border-slate-800 z-30">
-      {/* Brand Header */}
-      <div className="p-5 border-b border-slate-800 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-teal-700 flex items-center justify-center font-bold text-white shadow-inner">
+    <aside className="w-64 bg-[#09090b] text-zinc-300 flex flex-col h-screen fixed left-0 top-0 border-r border-zinc-800/60 z-30 select-none">
+      <div className="p-4 border-b border-zinc-800/60 flex items-center gap-3">
+        <button className="text-zinc-400 hover:text-white transition-colors">
+          <Menu className="w-5 h-5" />
+        </button>
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded-lg bg-amber-500 flex items-center justify-center font-bold text-black text-xs">
             TTM
           </div>
-          <div>
-            <h1 className="font-bold text-base tracking-tight text-white">TTM CRM</h1>
-            <p className="text-xs text-slate-400">Printing & Machinery</p>
-          </div>
+          <span className="font-bold text-white tracking-wide text-sm">TTM CRM</span>
         </div>
       </div>
 
-      {/* Quick Incoming Call Action */}
-      <div className="p-4">
-        <button
-          onClick={onOpenIncomingCall}
-          className="w-full bg-teal-700 hover:bg-teal-800 text-white font-bold py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 shadow-md transition-colors text-xs tracking-wide animate-pulse"
-        >
-          <PhoneIncoming className="w-4 h-4" />
-          <span>📞 Incoming Call Lookup</span>
-        </button>
-      </div>
-
-      {/* Navigation */}
-      <nav className="flex-1 px-3 py-2 space-y-1 overflow-y-auto">
+      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+        <div className="px-3 pb-2 text-[10px] font-bold uppercase tracking-wider text-zinc-500">Navigation</div>
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;
@@ -62,29 +53,25 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onOpe
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id)}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
                 isActive
-                  ? 'bg-teal-900/60 text-teal-300 border-l-4 border-teal-500'
-                  : 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
+                  ? 'bg-zinc-800/80 text-white font-semibold'
+                  : 'text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200'
               }`}
             >
-              <Icon className={`w-4 h-4 ${isActive ? 'text-teal-400' : 'text-slate-400'}`} />
+              <Icon className="w-4 h-4 text-zinc-400" />
               <span>{item.label}</span>
             </button>
           );
         })}
       </nav>
 
-      {/* Footer Info / Operator Status */}
-      <div className="p-4 border-t border-slate-800 bg-slate-950/40 text-xs text-slate-400">
-        <div className="flex items-center justify-between mb-1">
-          <span className="font-semibold text-slate-300">Showroom Status</span>
-          <span className="flex items-center gap-1.5 text-emerald-400 font-semibold">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            Online
-          </span>
-        </div>
-        <p className="text-[11px] text-slate-400">Addis Ababa, Ethiopia</p>
+      <div className="p-3 border-t border-zinc-800/60 bg-zinc-950/40 text-[11px] text-zinc-400 flex items-center justify-between">
+        <span>Showroom: Addis Ababa</span>
+        <span className="flex items-center gap-1.5 text-emerald-400 font-semibold">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+          Online
+        </span>
       </div>
     </aside>
   );

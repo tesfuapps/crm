@@ -1,6 +1,6 @@
 import React from 'react';
-import { Customer, CallLog, User, Branch } from '../types/crm';
-import { PhoneCall, Users, TrendingUp, Award, Calendar, ArrowUpRight, Clock, PhoneIncoming } from 'lucide-react';
+import { Customer, CallLog, User, Branch, Notification } from '../types/crm';
+import { ExternalLink, ArrowUpRight, Bell, Trophy } from 'lucide-react';
 
 interface DashboardProps {
   customers: Customer[];
@@ -11,218 +11,171 @@ interface DashboardProps {
   onOpenIncomingCall: () => void;
   onSelectCustomer: (customer: Customer) => void;
   setActiveTab: (tab: string) => void;
+  theme: 'light' | 'dark';
+  notifications: Notification[];
+  unreadCount: number;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
-  customers,
-  callLogs,
-  users,
-  branches,
-  selectedBranchId,
-  onOpenIncomingCall,
-  onSelectCustomer,
-  setActiveTab,
+  customers, callLogs, users, branches,
+  selectedBranchId, onOpenIncomingCall,
+  onSelectCustomer, setActiveTab, theme,
+  notifications, unreadCount,
 }) => {
-  const filteredCustomers = selectedBranchId === 'all' 
-    ? customers 
-    : customers.filter(c => c.branchId === selectedBranchId);
+  const isDark = theme === 'dark';
 
+  const filteredCustomers = selectedBranchId === 'all'
+    ? customers
+    : customers.filter(c => c.branchId === selectedBranchId);
   const filteredCustomerIds = new Set(filteredCustomers.map(c => c.id));
   const filteredCallLogs = selectedBranchId === 'all'
     ? callLogs
     : callLogs.filter(cl => filteredCustomerIds.has(cl.customerId));
 
-  const totalCalls = filteredCallLogs.length;
-  const totalMinutes = filteredCallLogs.reduce((sum, cl) => sum + cl.durationMinutes, 0);
+  const totalCallsToday = filteredCallLogs.length;
   const newLeadsCount = filteredCustomers.filter(c => c.customerStage === 'Lead' || c.customerStage === 'Contact').length;
   const clientsCount = filteredCustomers.filter(c => c.customerStage === 'Client').length;
-  const conversionRate = filteredCustomers.length > 0 
-    ? ((clientsCount / filteredCustomers.length) * 100).toFixed(1) 
+  const todayStr = new Date().toISOString().split('T')[0];
+  const overdueFollowUps = filteredCustomers.filter(c => c.nextFollowUpDate && c.nextFollowUpDate < todayStr).length;
+
+  const totalRevenue = filteredCallLogs.reduce((sum, cl) => {
+    const cust = customers.find(c => c.id === cl.customerId);
+    return sum + (cust?.dealValue || 0);
+  }, 0);
+
+  const leadConversionRate = filteredCustomers.length > 0
+    ? ((clientsCount / filteredCustomers.length) * 100).toFixed(0)
     : '0';
 
-  const todayStr = new Date().toISOString().split('T')[0];
-  const followUps = filteredCustomers.filter(c => c.nextFollowUpDate);
+  const branchLeaderboard = branches.map(b => {
+    const bCustomers = customers.filter(c => c.branchId === b.id);
+    const bClients = bCustomers.filter(c => c.customerStage === 'Client').length;
+    const bRevenue = bCustomers.reduce((sum, c) => sum + c.dealValue, 0);
+    return { name: b.name, customers: bCustomers.length, clients: bClients, revenue: bRevenue };
+  }).sort((a, b) => b.clients - a.clients);
 
   return (
-    <div className="space-y-6">
-      {/* Welcome & Quick Bar */}
-      <div className="flex items-center justify-between bg-white p-6 rounded-xl border border-slate-200/80 shadow-xs">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-teal-600 animate-pulse"></span>
-            <span className="text-xs font-semibold uppercase tracking-wider text-teal-700">Printing Showroom & Machinery Operations</span>
-          </div>
-          <h2 className="text-2xl font-bold text-slate-900 mt-1">Dashboard Overview</h2>
-          <p className="text-sm text-slate-500 mt-0.5">
-            Active Showroom: {selectedBranchId === 'all' ? 'All Branches (Bole, Mexico, Piassa)' : branches.find(b => b.id === selectedBranchId)?.name}
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setActiveTab('customers')}
-            className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-semibold transition-colors"
-          >
-            Directory
-          </button>
-          <button
-            onClick={onOpenIncomingCall}
-            className="px-5 py-2.5 bg-teal-700 hover:bg-teal-800 text-white rounded-xl text-sm font-bold shadow-md transition-colors flex items-center gap-2 animate-pulse"
-          >
-            <PhoneIncoming className="w-4 h-4" />
-            <span>📞 Incoming Call Lookup</span>
-          </button>
-        </div>
+    <div className="space-y-8 text-zinc-100 max-w-7xl mx-auto pb-12">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight text-white">Welcome to TTM CRM</h1>
+        <p className="text-xs text-zinc-400 mt-1">
+          Printing Showroom Operations • {selectedBranchId === 'all' ? 'All Showrooms' : branches.find(b => b.id === selectedBranchId)?.name}
+        </p>
       </div>
 
-      {/* Metrics Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
-        <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-xs flex items-center justify-between hover:border-teal-300 transition-all">
+      {/* Top 3 Metric Tiles */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div className="bg-[#18181b] rounded-xl p-5 border border-zinc-800/80 flex flex-col justify-between">
           <div>
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Calls Logged</p>
-            <h3 className="text-2xl font-bold text-slate-900 mt-1">{totalCalls}</h3>
-            <p className="text-xs text-teal-700 mt-1.5 flex items-center gap-1 font-medium">
-              <Clock className="w-3.5 h-3.5" /> {totalMinutes} mins on phone
-            </p>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">WON OPPORTUNITY</p>
+            <div className="text-3xl font-bold text-white mt-2">{clientsCount}</div>
           </div>
-          <div className="w-12 h-12 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center shadow-inner">
-            <PhoneCall className="w-6 h-6" />
+          <div className="text-xs text-zinc-500 mt-4 flex items-center gap-1.5 font-medium">
+            <span>Active clients across all branches</span>
           </div>
         </div>
-
-        <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-xs flex items-center justify-between hover:border-amber-300 transition-all">
+        <div className="bg-[#18181b] rounded-xl p-5 border border-zinc-800/80 flex flex-col justify-between">
           <div>
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Active Leads & Inquiries</p>
-            <h3 className="text-2xl font-bold text-slate-900 mt-1">{newLeadsCount}</h3>
-            <p className="text-xs text-amber-600 mt-1.5 font-medium">Requires follow-up</p>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">TOTAL REVENUE</p>
+            <div className="text-3xl font-bold text-white mt-2">{totalRevenue.toLocaleString()} ETB</div>
           </div>
-          <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shadow-inner">
-            <Users className="w-6 h-6" />
+          <div className="text-xs text-emerald-400 mt-4 flex items-center gap-1 font-semibold">
+            <span>↗ Based on current pipeline</span>
           </div>
         </div>
-
-        <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-xs flex items-center justify-between hover:border-emerald-300 transition-all">
+        <div className="bg-[#18181b] rounded-xl p-5 border border-zinc-800/80 flex flex-col justify-between">
           <div>
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Conversion Rate</p>
-            <h3 className="text-2xl font-bold text-slate-900 mt-1">{conversionRate}%</h3>
-            <p className="text-xs text-emerald-600 mt-1.5 flex items-center gap-1 font-medium">
-              <TrendingUp className="w-3.5 h-3.5" /> Contact to Client ratio
-            </p>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">CONVERSION RATE</p>
+            <div className="text-3xl font-bold text-white mt-2">{leadConversionRate}%</div>
           </div>
-          <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shadow-inner">
-            <TrendingUp className="w-6 h-6" />
-          </div>
-        </div>
-
-        <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-xs flex items-center justify-between hover:border-purple-300 transition-all">
-          <div>
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Top Inquiry Source</p>
-            <h3 className="text-2xl font-bold text-slate-900 mt-1">Telegram</h3>
-            <p className="text-xs text-purple-600 mt-1.5 font-medium">35% of all leads</p>
-          </div>
-          <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shadow-inner">
-            <Award className="w-6 h-6" />
+          <div className="text-xs text-zinc-500 mt-4 flex items-center gap-1.5 font-medium">
+            <span>{clientsCount} of {filteredCustomers.length} leads converted</span>
           </div>
         </div>
       </div>
 
-      {/* Two-Column Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left: Follow-ups due */}
-        <div className="bg-white rounded-xl border border-slate-200/80 shadow-xs p-5">
-          <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
-            <h3 className="font-bold text-slate-900 flex items-center gap-2 text-sm uppercase tracking-wider">
-              <Calendar className="w-4 h-4 text-amber-600" />
-              <span>Scheduled Follow-ups</span>
-            </h3>
-            <span className="text-xs font-bold bg-amber-50 text-amber-700 px-2.5 py-1 rounded-full border border-amber-200">
-              {followUps.length} upcoming
-            </span>
-          </div>
-
-          <div className="space-y-3">
-            {followUps.length === 0 ? (
-              <p className="text-sm text-slate-500 py-6 text-center">No follow-ups scheduled.</p>
-            ) : (
-              followUps.slice(0, 5).map((customer) => {
-                const isOverdue = customer.nextFollowUpDate! < todayStr;
-                return (
-                  <div
-                    key={customer.id}
-                    onClick={() => onSelectCustomer(customer)}
-                    className="p-3.5 rounded-xl border border-slate-100 hover:border-teal-300 hover:bg-slate-50/80 transition-all cursor-pointer shadow-2xs"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-sm text-slate-900">{customer.customerName}</span>
-                      <span className={`text-xs px-2.5 py-0.5 rounded-md font-semibold border ${
-                        isOverdue ? 'bg-red-50 text-red-700 border-red-200' : 'bg-slate-100 text-slate-700 border-slate-200'
-                      }`}>
-                        {customer.nextFollowUpDate}
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-500 mt-1">{customer.companyName || customer.phoneNumber}</p>
-                    <div className="flex items-center justify-between mt-2.5 pt-2.5 border-t border-slate-100 text-xs">
-                      <span className="text-teal-700 font-semibold">{customer.purposeOfCall}</span>
-                      <span className="text-slate-400 font-medium">Priority: {customer.leadPriority}</span>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
-
-        {/* Right: Recent Call Logs */}
-        <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200/80 shadow-xs p-5">
-          <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
-            <h3 className="font-bold text-slate-900 flex items-center gap-2 text-sm uppercase tracking-wider">
-              <PhoneCall className="w-4 h-4 text-teal-700" />
-              <span>Recent Call Activity</span>
-            </h3>
-            <button
-              onClick={() => setActiveTab('customers')}
-              className="text-xs text-teal-700 font-bold hover:underline flex items-center gap-1"
-            >
-              <span>View all logs</span>
-              <ArrowUpRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-slate-50/80 text-slate-600 text-xs uppercase tracking-wider font-bold border-b border-slate-200">
-                <tr>
-                  <th className="py-3 px-4">Client / Company</th>
-                  <th className="py-3 px-4">Agent</th>
-                  <th className="py-3 px-4">Inquiry / Purpose</th>
-                  <th className="py-3 px-4">Duration</th>
-                  <th className="py-3 px-4">Time</th>
+      {/* Scoreboard */}
+      <div>
+        <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-3 flex items-center gap-2">
+          <Trophy className="w-4 h-4 text-amber-400" /> Branch Leaderboard
+        </h3>
+        <div className="bg-[#18181b] rounded-xl border border-zinc-800/80 overflow-hidden">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-zinc-950/80 text-zinc-400 text-xs uppercase tracking-wider">
+              <tr>
+                <th className="py-3 px-4">Rank</th>
+                <th className="py-3 px-4">Branch</th>
+                <th className="py-3 px-4">Customers</th>
+                <th className="py-3 px-4">Clients</th>
+                <th className="py-3 px-4">Revenue (ETB)</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-800/60">
+              {branchLeaderboard.map((b, i) => (
+                <tr key={b.name} className={`hover:bg-zinc-800/40 transition-colors ${i === 0 ? 'bg-amber-950/20' : ''}`}>
+                  <td className="py-3 px-4">
+                    <span className={`text-xs font-bold ${i === 0 ? 'text-amber-400' : i === 1 ? 'text-zinc-300' : i === 2 ? 'text-orange-400' : 'text-zinc-500'}`}>
+                      #{i + 1}
+                    </span>
+                  </td>
+                  <td className="py-3 px-4 font-medium text-white text-sm">{b.name}</td>
+                  <td className="py-3 px-4 text-zinc-300">{b.customers}</td>
+                  <td className="py-3 px-4 text-emerald-400">{b.clients}</td>
+                  <td className="py-3 px-4 font-bold text-zinc-200">{b.revenue.toLocaleString()}</td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filteredCallLogs.slice(0, 6).map((log) => {
-                  const customer = customers.find(c => c.id === log.customerId);
-                  const user = users.find(u => u.id === log.userId);
-                  return (
-                    <tr 
-                      key={log.id} 
-                      onClick={() => customer && onSelectCustomer(customer)}
-                      className="hover:bg-slate-50/90 cursor-pointer transition-colors"
-                    >
-                      <td className="py-3.5 px-4 font-semibold text-slate-900">
-                        {customer?.customerName || 'Unknown'}
-                        <div className="text-xs text-slate-500 font-normal">{customer?.companyName || customer?.phoneNumber}</div>
-                      </td>
-                      <td className="py-3.5 px-4 text-slate-600 font-medium">{user?.name || 'Agent'}</td>
-                      <td className="py-3.5 px-4 text-slate-800 font-medium">{log.purpose}</td>
-                      <td className="py-3.5 px-4 text-slate-600 font-mono text-xs">{log.durationMinutes} mins</td>
-                      <td className="py-3.5 px-4 text-slate-500 text-xs font-medium">
-                        {new Date(log.dateTime).toLocaleDateString()} {new Date(log.dateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Quick Links */}
+      <div className="space-y-6">
+        <div>
+          <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-3">Follow-ups & Calls</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+            <div onClick={() => setActiveTab('customers')} className="bg-[#18181b] hover:bg-zinc-800/80 transition-colors border border-zinc-800/80 rounded-lg p-3.5 flex items-center justify-between cursor-pointer">
+              <div className="flex items-center gap-2 text-xs font-medium text-zinc-200"><span>Overdue Follow-ups</span><ArrowUpRight className="w-3.5 h-3.5 text-zinc-500" /></div>
+              <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${overdueFollowUps > 0 ? 'bg-red-950 text-red-400 border border-red-900' : 'bg-zinc-800 text-zinc-300'}`}>{overdueFollowUps} Overdue</span>
+            </div>
+            <div onClick={() => setActiveTab('customers')} className="bg-[#18181b] hover:bg-zinc-800/80 transition-colors border border-zinc-800/80 rounded-lg p-3.5 flex items-center justify-between cursor-pointer">
+              <div className="flex items-center gap-2 text-xs font-medium text-zinc-200"><span>Calls Today</span><ArrowUpRight className="w-3.5 h-3.5 text-zinc-500" /></div>
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-900">{totalCallsToday} Today</span>
+            </div>
+            <div onClick={() => setActiveTab('customers')} className="bg-[#18181b] hover:bg-zinc-800/80 transition-colors border border-zinc-800/80 rounded-lg p-3.5 flex items-center justify-between cursor-pointer">
+              <div className="flex items-center gap-2 text-xs font-medium text-zinc-200"><span>Active Leads</span><ArrowUpRight className="w-3.5 h-3.5 text-zinc-500" /></div>
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-300">{newLeadsCount}</span>
+            </div>
+            <div onClick={() => setActiveTab('pipeline')} className="bg-[#18181b] hover:bg-zinc-800/80 transition-colors border border-zinc-800/80 rounded-lg p-3.5 flex items-center justify-between cursor-pointer">
+              <div className="flex items-center gap-2 text-xs font-medium text-zinc-200"><span>Pipeline Board</span><ArrowUpRight className="w-3.5 h-3.5 text-zinc-500" /></div>
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-300">Active</span>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-3">Tools & Store</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+            {[['products', 'Product Store', 'Catalog'], ['reports', 'Sales Reports', 'Analytics'], ['import-export', 'Import / Export', 'Sync'], ['settings', 'Settings & Users', 'Admin']].map(([tab, label, badge]) => (
+              <div key={tab} onClick={() => setActiveTab(tab as any)} className="bg-[#18181b] hover:bg-zinc-800/80 transition-colors border border-zinc-800/80 rounded-lg p-3.5 flex items-center justify-between cursor-pointer">
+                <div className="flex items-center gap-2 text-xs font-medium text-zinc-200"><span>{label}</span><ArrowUpRight className="w-3.5 h-3.5 text-zinc-500" /></div>
+                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-300">{badge}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-3">Sales & Clients</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+            <div onClick={() => setActiveTab('customers')} className="bg-[#18181b] hover:bg-zinc-800/80 transition-colors border border-zinc-800/80 rounded-lg p-3.5 flex items-center justify-between cursor-pointer">
+              <div className="flex items-center gap-2 text-xs font-medium text-zinc-200"><span>Total Clients</span><ArrowUpRight className="w-3.5 h-3.5 text-zinc-500" /></div>
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-900">{filteredCustomers.length} Active</span>
+            </div>
+            <div onClick={() => setActiveTab('customers')} className="bg-[#18181b] hover:bg-zinc-800/80 transition-colors border border-zinc-800/80 rounded-lg p-3.5 flex items-center justify-between cursor-pointer">
+              <div className="flex items-center gap-2 text-xs font-medium text-zinc-200"><span>Converted Clients</span><ArrowUpRight className="w-3.5 h-3.5 text-zinc-500" /></div>
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-300">{clientsCount}</span>
+            </div>
           </div>
         </div>
       </div>

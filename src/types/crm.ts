@@ -8,6 +8,8 @@ export type OldCustomerSource = 'Previous Buyer' | 'Direct Call' | 'Exhibition' 
 export interface Branch {
   id: string;
   name: string;
+  managerId?: string;
+  subCity: string;
 }
 
 export interface User {
@@ -18,6 +20,24 @@ export interface User {
   email: string;
 }
 
+export interface BranchReassignmentEntry {
+  previousBranch: string;
+  previousBranchId: string;
+  newBranch: string;
+  newBranchId: string;
+  dateTime: string;
+  reason: string;
+}
+
+export interface AISummary {
+  summary: string;
+  sentiment: 'Positive' | 'Neutral' | 'Hesitant' | 'Urgent';
+  keyInterests: string[];
+  suggestedAction: string;
+  suggestedFollowUpDate?: string;
+  generatedAt: string;
+}
+
 export interface Customer {
   id: string;
   customerName: string;
@@ -26,16 +46,54 @@ export interface Customer {
   alternatePhone?: string;
   email?: string;
   customerType: CustomerType;
-  source: string; // e.g. Telegram, Facebook, Referral, Previous Buyer
+  source: string;
   purposeOfCall: string;
   customerStage: CustomerStage;
   assignedUserId: string;
   branchId: string;
+  mainBranchId: string;
   nextFollowUpDate?: string;
+  lastContactedDate?: string;
   leadPriority: LeadPriority;
   dealValue: number;
   createdAt: string;
   updatedAt: string;
+  internalNotes?: string;
+  labels?: string[];
+  consecutivePurchaseStreak: Record<string, number>;
+  branchReassignmentLog: BranchReassignmentEntry[];
+  aiSummary?: AISummary;
+}
+
+export interface ProductRequest {
+  id: string;
+  customerId: string;
+  itemName: string;
+  itemCategory: string;
+  estimatedQuantity: number;
+  targetBudgetEtb?: number;
+  status: 'Open' | 'Sourced' | 'Fulfilled' | 'Cancelled';
+  notes?: string;
+  createdAt: string;
+}
+
+export interface AIForecast {
+  forecastedRevenue30Days: number;
+  confidenceScore: number;
+  topOpportunities: string[];
+  risksAndBottlenecks: string[];
+  executiveSummary: string;
+  generatedAt: string;
+}
+
+export interface Notification {
+  id: string;
+  recipientUserId: string;
+  type: 'branch_reassignment' | 'follow_up_due' | 'stage_change' | 'system';
+  title: string;
+  message: string;
+  read: boolean;
+  createdAt: string;
 }
 
 export interface CallLog {
@@ -53,7 +111,7 @@ export interface ProductItem {
   itemName: string;
   itemDescription: string;
   itemCategory: string;
-  itemPrice: number; // in ETB
+  itemPrice: number;
   stockQuantity: number;
 }
 
@@ -63,5 +121,27 @@ export interface ProductSale {
   itemId: string;
   quantity: number;
   saleDate: string;
-  saleAmount: number; // in ETB
+  saleAmount: number;
+}
+
+export interface Label {
+  id: string;
+  name: string;
+  color: string;
+  createdBy: string;
+}
+
+export interface FilterPreset {
+  id: string;
+  userId: string;
+  name: string;
+  filters: {
+    stage?: string;
+    source?: string;
+    priority?: string;
+    branchId?: string;
+    repId?: string;
+    labelId?: string;
+    dateRange?: { start: string; end: string };
+  };
 }

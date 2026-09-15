@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Customer, Branch, User, CallLog, CustomerStage, ProductItem } from '../types/crm';
-import { Search, Filter, Plus, PhoneCall, ChevronRight, UserPlus, Send, Calculator, ShoppingBag } from 'lucide-react';
+import { Customer, Branch, User, CallLog, CustomerStage, ProductItem, BranchReassignmentEntry, FilterPreset } from '../types/crm';
+import { Search, Filter, PhoneCall, ChevronRight, Send, Calculator, Trash2, Edit3, Check, Mail, Users, UserCircle, Phone, Clock, ArrowUpRight, Bookmark, X } from 'lucide-react';
 
 interface CustomerListViewProps {
   customers: Customer[];
@@ -9,13 +9,13 @@ interface CustomerListViewProps {
   callLogs: CallLog[];
   selectedBranchId: string;
   products: ProductItem[];
+  theme: 'light' | 'dark';
   onAddCustomer: (newCust: Customer) => void;
   onUpdateCustomer: (updatedCust: Customer) => void;
   onDeleteCustomer: (customerId: string) => void;
   onOpenLogCallForCustomer: (customer: Customer) => void;
   initialSelectedCustomer?: Customer | null;
-  externalOpenAddModal?: boolean;
-  setExternalOpenAddModal?: (open: boolean) => void;
+  filterPresets?: FilterPreset[];
 }
 
 export const CustomerListView: React.FC<CustomerListViewProps> = ({
@@ -25,157 +25,186 @@ export const CustomerListView: React.FC<CustomerListViewProps> = ({
   callLogs,
   selectedBranchId,
   products,
+  theme,
   onAddCustomer,
   onUpdateCustomer,
   onDeleteCustomer,
   onOpenLogCallForCustomer,
   initialSelectedCustomer,
-  externalOpenAddModal,
-  setExternalOpenAddModal,
+  filterPresets = [],
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [stageFilter, setStageFilter] = useState<string>('all');
   const [sourceFilter, setSourceFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(initialSelectedCustomer || null);
-  const [isAddModalOpen, setIsAddModalOpen] = useState(externalOpenAddModal || false);
-
-  // Quick-Quote Calculator state inside detail view
+  const [activeDetailTab, setActiveDetailTab] = useState<'overview' | 'calls' | 'notes' | 'productRequests' | 'purchaseHistory'>('overview');
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editCompany, setEditCompany] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editDealValue, setEditDealValue] = useState(0);
+  const [editPriority, setEditPriority] = useState<Customer['leadPriority']>('Warm');
+  const [editFollowUp, setEditFollowUp] = useState('');
+  const [editNotes, setEditNotes] = useState('');
   const [calcProductId, setCalcProductId] = useState(products[0]?.id || '');
   const [calcQuantity, setCalcQuantity] = useState(1);
+  const [showPresets, setShowPresets] = useState(false);
+  const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
 
   useEffect(() => {
-    if (externalOpenAddModal !== undefined) {
-      setIsAddModalOpen(externalOpenAddModal);
+    if (selectedCustomer) {
+      setEditName(selectedCustomer.customerName);
+      setEditCompany(selectedCustomer.companyName || '');
+      setEditPhone(selectedCustomer.phoneNumber);
+      setEditEmail(selectedCustomer.email || '');
+      setEditDealValue(selectedCustomer.dealValue || 0);
+      setEditPriority(selectedCustomer.leadPriority || 'Warm');
+      setEditFollowUp(selectedCustomer.nextFollowUpDate || '');
+      setEditNotes(selectedCustomer.internalNotes || '');
+      setIsEditing(false);
+      setActiveDetailTab('overview');
     }
-  }, [externalOpenAddModal]);
+  }, [selectedCustomer?.id]);
 
-  const handleCloseAddModal = () => {
-    setIsAddModalOpen(false);
-    if (setExternalOpenAddModal) setExternalOpenAddModal(false);
+  const handleSaveInlineEdit = () => {
+    if (!selectedCustomer) return;
+    const updated: Customer = {
+      ...selectedCustomer,
+      customerName: editName,
+      companyName: editCompany || undefined,
+      phoneNumber: editPhone,
+      email: editEmail || undefined,
+      dealValue: Number(editDealValue),
+      leadPriority: editPriority,
+      nextFollowUpDate: editFollowUp || undefined,
+      updatedAt: new Date().toISOString(),
+      internalNotes: editNotes,
+    };
+    onUpdateCustomer(updated);
+    setSelectedCustomer(updated);
+    setIsEditing(false);
   };
 
-  // New customer form state
-  const [newName, setNewName] = useState('');
-  const [newCompany, setNewCompany] = useState('');
-  const [newPhone, setNewPhone] = useState('09');
-  const [newEmail, setNewEmail] = useState('');
-  const [newType, setNewType] = useState<'New' | 'Old'>('New');
-  const [newSource, setNewSource] = useState('Telegram');
-  const [newPurpose, setNewPurpose] = useState('Inquiry: Mug Press & Printing Machinery');
-  const [newStage, setNewStage] = useState<CustomerStage>('Contact');
-  const [newPriority, setNewPriority] = useState<'Hot' | 'Warm' | 'Cold'>('Warm');
-  const [newDealValue, setNewDealValue] = useState(25000);
-  const [newBranchId, setNewBranchId] = useState(selectedBranchId === 'all' ? 'b1' : selectedBranchId);
-
-  // Filtering
   const filteredCustomers = customers.filter(c => {
     const matchesBranch = selectedBranchId === 'all' || c.branchId === selectedBranchId;
     const matchesStage = stageFilter === 'all' || c.customerStage === stageFilter;
     const matchesSource = sourceFilter === 'all' || c.source === sourceFilter;
     const matchesPriority = priorityFilter === 'all' || c.leadPriority === priorityFilter;
-    const matchesSearch = 
+    const matchesSearch =
       c.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (c.companyName && c.companyName.toLowerCase().includes(searchTerm.toLowerCase())) ||
       c.phoneNumber.includes(searchTerm);
     return matchesBranch && matchesStage && matchesSource && matchesPriority && matchesSearch;
   });
 
-  const handleCreateCustomer = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newName.trim() || !newPhone.trim()) return;
+  // Duplicate detection
+  const potentialDuplicates = searchTerm.length >= 3
+    ? customers.filter(c =>
+        c.phoneNumber.includes(searchTerm) ||
+        c.customerName.toLowerCase().includes(searchTerm.toLowerCase())
+      ).slice(0, 3)
+    : [];
+  const hasDuplicates = potentialDuplicates.length > 0;
 
-    const cust: Customer = {
-      id: 'c_' + Date.now(),
-      customerName: newName,
-      companyName: newCompany || undefined,
-      phoneNumber: newPhone,
-      email: newEmail || undefined,
-      customerType: newType,
-      source: newSource,
-      purposeOfCall: newPurpose,
-      customerStage: newStage,
-      assignedUserId: users[0]?.id || 'u1',
-      branchId: newBranchId,
-      leadPriority: newPriority,
-      dealValue: Number(newDealValue),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-
-    onAddCustomer(cust);
-    handleCloseAddModal();
-    setNewName('');
-    setNewCompany('');
-    setNewPhone('09');
-    setNewEmail('');
+  const getInitials = (name: string) => {
+    return name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
   };
 
-  const getStageBadgeClass = (stage: CustomerStage) => {
-    switch (stage) {
-      case 'Contact': return 'bg-sky-50 text-sky-700 border-sky-200';
-      case 'Lead': return 'bg-amber-50 text-amber-700 border-amber-200';
-      case 'Customer': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
-      case 'Client': return 'bg-purple-50 text-purple-700 border-purple-200';
-    }
+  const assignedUser = selectedCustomer ? users.find(u => u.id === selectedCustomer.assignedUserId) : null;
+  const isDark = theme === 'dark';
+
+  const stageBadge = (stage: CustomerStage) => {
+    const colors: Record<CustomerStage, string> = {
+      Contact: 'bg-sky-950/60 text-sky-300 border-sky-800',
+      Lead: 'bg-amber-950/60 text-amber-300 border-amber-800',
+      Customer: 'bg-emerald-950/60 text-emerald-300 border-emerald-800',
+      Client: 'bg-purple-950/60 text-purple-300 border-purple-800',
+    };
+    return (
+      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${colors[stage]}`}>
+        {stage}
+      </span>
+    );
+  };
+
+  const priorityBadge = (priority: string) => {
+    const colors: Record<string, string> = {
+      Hot: 'bg-red-950/60 text-red-400 border-red-800',
+      Warm: 'bg-amber-950/60 text-amber-300 border-amber-800',
+      Cold: 'bg-zinc-800 text-zinc-300 border-zinc-700',
+    };
+    return (
+      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${colors[priority] || colors.Cold}`}>
+        {priority}
+      </span>
+    );
   };
 
   return (
     <div className="space-y-6">
-      {/* Top Header / Actions */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-xl border border-slate-200/80 shadow-xs">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
-              Shortcut: Alt + N (New) | Alt + L (Call)
-            </span>
-          </div>
-          <h2 className="text-xl font-bold text-slate-900">Printing Client Directory</h2>
-          <p className="text-sm text-slate-500 mt-0.5">
-            Showing {filteredCustomers.length} of {customers.length} total printing clients & machinery buyers
-          </p>
-        </div>
-        <button
-          onClick={() => setIsAddModalOpen(true)}
-          className="px-4 py-2.5 bg-teal-700 hover:bg-teal-800 text-white rounded-lg text-sm font-semibold shadow-sm transition-colors flex items-center justify-center gap-2"
-        >
-          <Plus className="w-4 h-4" />
-          <span>+ Add New Customer</span>
-        </button>
+      <div className={`p-6 rounded-xl border transition-colors ${isDark ? 'bg-[#18181b] border-zinc-800/60' : 'bg-white border-slate-200'}`}>
+        <h2 className="text-xl font-bold text-white">Printing Client Directory</h2>
+        <p className={`text-sm mt-0.5 ${isDark ? 'text-zinc-400' : 'text-slate-500'}`}>
+          Showing {filteredCustomers.length} of {customers.length} total printing clients & machinery buyers
+        </p>
       </div>
 
-      {/* Filter Toolbar */}
-      <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs flex flex-wrap items-center gap-3">
+      {/* Duplicate Warning */}
+      {hasDuplicates && searchTerm.length >= 3 && (
+        <div className="bg-amber-950/40 border border-amber-800/60 rounded-lg p-3">
+          <p className="text-xs font-bold text-amber-300">⚠ Possible duplicate(s) detected:</p>
+          <div className="flex gap-2 mt-1 flex-wrap">
+            {potentialDuplicates.map(d => (
+              <span key={d.id} className="text-[10px] bg-amber-900/60 text-amber-200 px-2 py-0.5 rounded border border-amber-700">
+                {d.customerName} ({d.phoneNumber})
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Filter Presets Bar */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <button onClick={() => setShowPresets(!showPresets)} className="text-xs text-zinc-400 hover:text-zinc-200 flex items-center gap-1 border border-zinc-800 px-2 py-1 rounded">
+          <Bookmark className="w-3 h-3" /> Saved Filters ({filterPresets.length})
+        </button>
+        {showPresets && filterPresets.length > 0 && (
+          <div className="flex gap-2 flex-wrap">
+            {filterPresets.map(fp => (
+              <button key={fp.id} onClick={() => { setStageFilter(fp.filters.stage || 'all'); setSourceFilter(fp.filters.source || 'all'); setPriorityFilter(fp.filters.priority || 'all'); setShowPresets(false); }} className="text-[10px] bg-zinc-800 text-zinc-300 px-2 py-0.5 rounded hover:bg-zinc-700 border border-zinc-700">
+                {fp.name}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className={`p-4 rounded-xl border transition-colors flex flex-wrap items-center gap-3 ${isDark ? 'bg-[#18181b] border-zinc-800/60' : 'bg-white border-slate-200'}`}>
         <div className="relative flex-1 min-w-[240px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
           <input
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search by client name, print shop, or phone (09...)"
-            className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-600 focus:bg-white"
+            className={`w-full pl-10 pr-4 py-2 rounded-lg text-sm border focus:outline-none transition-colors ${
+              isDark ? 'bg-[#1F2937] border-zinc-700 text-zinc-200 placeholder-zinc-500' : 'bg-slate-50 border-slate-200 text-slate-800 placeholder-slate-400'
+            }`}
           />
         </div>
 
         <div className="flex items-center gap-2">
-          <Filter className="w-4 h-4 text-slate-400" />
-          <select
-            value={stageFilter}
-            onChange={(e) => setStageFilter(e.target.value)}
-            className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-600"
-          >
+          <Filter className="w-4 h-4 text-zinc-500" />
+          <select value={stageFilter} onChange={(e) => setStageFilter(e.target.value)} className={`rounded-lg px-3 py-2 text-sm border focus:outline-none transition-colors ${isDark ? 'bg-[#1F2937] border-zinc-700 text-zinc-200' : 'bg-slate-50 border-slate-200 text-slate-700'}`}>
             <option value="all">All Stages</option>
             <option value="Contact">Contact</option>
             <option value="Lead">Lead</option>
             <option value="Customer">Customer</option>
             <option value="Client">Client</option>
           </select>
-
-          <select
-            value={sourceFilter}
-            onChange={(e) => setSourceFilter(e.target.value)}
-            className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-600"
-          >
+          <select value={sourceFilter} onChange={(e) => setSourceFilter(e.target.value)} className={`rounded-lg px-3 py-2 text-sm border focus:outline-none transition-colors ${isDark ? 'bg-[#1F2937] border-zinc-700 text-zinc-200' : 'bg-slate-50 border-slate-200 text-slate-700'}`}>
             <option value="all">All Sources</option>
             <option value="Telegram">Telegram</option>
             <option value="Facebook">Facebook</option>
@@ -183,12 +212,7 @@ export const CustomerListView: React.FC<CustomerListViewProps> = ({
             <option value="Previous Buyer">Previous Buyer</option>
             <option value="Exhibition">Exhibition</option>
           </select>
-
-          <select
-            value={priorityFilter}
-            onChange={(e) => setPriorityFilter(e.target.value)}
-            className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-600"
-          >
+          <select value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value)} className={`rounded-lg px-3 py-2 text-sm border focus:outline-none transition-colors ${isDark ? 'bg-[#1F2937] border-zinc-700 text-zinc-200' : 'bg-slate-50 border-slate-200 text-slate-700'}`}>
             <option value="all">All Priorities</option>
             <option value="Hot">Hot</option>
             <option value="Warm">Warm</option>
@@ -197,13 +221,11 @@ export const CustomerListView: React.FC<CustomerListViewProps> = ({
         </div>
       </div>
 
-      {/* Main Content: Split view if customer selected, else full table */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Customer Table */}
-        <div className={`bg-white rounded-xl border border-slate-200/80 shadow-xs overflow-hidden ${selectedCustomer ? 'lg:col-span-2' : 'lg:col-span-3'}`}>
+        <div className={`rounded-xl border overflow-hidden transition-colors ${selectedCustomer ? 'lg:col-span-2' : 'lg:col-span-3'} ${isDark ? 'bg-[#18181b] border-zinc-800/60' : 'bg-white border-slate-200'}`}>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
-              <thead className="bg-slate-50/80 text-slate-600 text-xs uppercase tracking-wider font-bold border-b border-slate-200">
+              <thead className={`text-xs uppercase tracking-wider font-bold border-b ${isDark ? 'bg-zinc-950/80 text-zinc-400 border-zinc-800' : 'bg-slate-50/80 text-slate-600 border-slate-200'}`}>
                 <tr>
                   <th className="py-3.5 px-4">Client / Print Shop</th>
                   <th className="py-3.5 px-4">Stage</th>
@@ -213,77 +235,42 @@ export const CustomerListView: React.FC<CustomerListViewProps> = ({
                   <th className="py-3.5 px-4 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className={`divide-y ${isDark ? 'divide-zinc-800/60' : 'divide-slate-100'}`}>
                 {filteredCustomers.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="py-12 text-center text-slate-500">
-                      No printing clients found matching your filters.
-                    </td>
+                    <td colSpan={6} className="py-12 text-center text-zinc-500">No printing clients found matching your filters.</td>
                   </tr>
                 ) : (
                   filteredCustomers.map((cust) => {
                     const isSelected = selectedCustomer?.id === cust.id;
                     return (
-                      <tr
-                        key={cust.id}
-                        onClick={() => setSelectedCustomer(cust)}
-                        className={`hover:bg-slate-50/90 cursor-pointer transition-colors ${
-                          isSelected ? 'bg-teal-50/60 border-l-4 border-teal-600' : ''
-                        }`}
-                      >
+                      <tr key={cust.id} onClick={() => setSelectedCustomer(cust)} className={`cursor-pointer transition-colors ${isSelected ? 'bg-zinc-800/60 border-l-4 border-amber-500' : isDark ? 'hover:bg-zinc-800/40' : 'hover:bg-slate-50/90'}`}>
                         <td className="py-3.5 px-4">
-                          <div className="font-semibold text-slate-900">{cust.customerName}</div>
-                          <div className="text-xs text-slate-500">{cust.companyName || 'Independent Print Shop'}</div>
+                          <div className={`font-semibold ${isDark ? 'text-zinc-100' : 'text-slate-900'}`}>{cust.customerName}</div>
+                          <div className={`text-xs ${isDark ? 'text-zinc-400' : 'text-slate-500'}`}>{cust.companyName || 'Independent Print Shop'}</div>
                         </td>
-                        <td className="py-3.5 px-4">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${getStageBadgeClass(cust.customerStage)}`}>
-                            {cust.customerStage}
-                          </span>
-                        </td>
+                        <td className="py-3.5 px-4">{stageBadge(cust.customerStage)}</td>
                         <td className="py-3.5 px-4">
                           <div className="flex items-center gap-2">
-                            <a
-                              href={`tel:${cust.phoneNumber}`}
-                              onClick={(e) => e.stopPropagation()}
-                              className="font-mono text-xs font-bold text-teal-700 hover:underline bg-teal-50 px-2 py-1 rounded border border-teal-200 flex items-center gap-1"
-                              title="Click to Call"
-                            >
+                            <a href={`tel:${cust.phoneNumber}`} onClick={(e) => e.stopPropagation()} className={`font-mono text-xs font-bold px-2 py-1 rounded border flex items-center gap-1 transition-colors ${isDark ? 'bg-teal-950/60 text-teal-300 border-zinc-700 hover:bg-zinc-900' : 'bg-teal-50 text-teal-700 border-teal-200 hover:bg-teal-100'}`} title="Click to Call">
                               <PhoneCall className="w-3 h-3" />
                               <span>{cust.phoneNumber}</span>
                             </a>
-                            <a
-                              href={`https://t.me/+251${cust.phoneNumber.replace(/^0/, '')}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={(e) => e.stopPropagation()}
-                              className="text-sky-600 hover:text-sky-700 bg-sky-50 p-1.5 rounded border border-sky-200 transition-colors"
-                              title="Open in Telegram"
-                            >
+                            <a href={`https://t.me/+251${cust.phoneNumber.replace(/^0/, '')}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className={`p-1.5 rounded border transition-colors ${isDark ? 'bg-zinc-800 text-zinc-400 border-zinc-700 hover:bg-zinc-700' : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'}`} title="Open in Telegram">
                               <Send className="w-3 h-3" />
                             </a>
                           </div>
                         </td>
-                        <td className="py-3.5 px-4 text-slate-600">
-                          <span className="bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-md text-xs font-semibold">
-                            {cust.source}
-                          </span>
+                        <td className="py-3.5 px-4">
+                          <span className={`px-2.5 py-0.5 rounded-md text-xs font-semibold ${isDark ? 'bg-zinc-800 text-zinc-300' : 'bg-slate-100 text-slate-700'}`}>{cust.source}</span>
                         </td>
-                        <td className="py-3.5 px-4 text-slate-900 font-bold">
-                          {cust.dealValue ? `${cust.dealValue.toLocaleString()} ETB` : '—'}
-                        </td>
+                        <td className={`py-3.5 px-4 font-bold ${isDark ? 'text-zinc-100' : 'text-slate-900'}`}>{cust.dealValue ? `${cust.dealValue.toLocaleString()} ETB` : '—'}</td>
                         <td className="py-3.5 px-4 text-right">
                           <div className="flex items-center justify-end gap-2">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onOpenLogCallForCustomer(cust);
-                              }}
-                              className="p-1.5 text-teal-700 hover:bg-teal-100 rounded-lg transition-colors"
-                              title="Log Call"
-                            >
+                            <button onClick={(e) => { e.stopPropagation(); onOpenLogCallForCustomer(cust); }} className={`p-1.5 rounded-lg transition-colors ${isDark ? 'text-teal-400 hover:bg-zinc-900' : 'text-teal-700 hover:bg-teal-100'}`} title="Incoming Call Lookup">
                               <PhoneCall className="w-4 h-4" />
                             </button>
-                            <ChevronRight className={`w-4 h-4 text-slate-400 transition-transform ${isSelected ? 'rotate-90 text-teal-700' : ''}`} />
+                            <ChevronRight className={`w-4 h-4 transition-transform ${isSelected ? 'rotate-90 text-amber-500' : 'text-zinc-500'}`} />
                           </div>
                         </td>
                       </tr>
@@ -295,377 +282,186 @@ export const CustomerListView: React.FC<CustomerListViewProps> = ({
           </div>
         </div>
 
-        {/* Customer Detail & Quick-Quote Calculator Panel */}
         {selectedCustomer && (
-          <div className="bg-white rounded-xl border border-slate-200/80 shadow-xs p-5 flex flex-col h-[calc(100vh-14rem)] sticky top-24">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-              <div>
-                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border mb-1.5 ${getStageBadgeClass(selectedCustomer.customerStage)}`}>
-                  {selectedCustomer.customerStage}
-                </span>
-                <h3 className="font-bold text-lg text-slate-900">{selectedCustomer.customerName}</h3>
+          <div className={`rounded-xl border shadow-sm max-w-[420px] w-full mx-auto flex flex-col sticky top-24 transition-colors ${isDark ? 'bg-[#18181b] border-zinc-800/60 text-zinc-100' : 'bg-white border-slate-200 text-slate-800'}`}>
+            <div className={`p-4 border-b flex items-start justify-between ${isDark ? 'border-zinc-800/60' : 'border-slate-200'}`}>
+              <div className="flex gap-3">
+                <div className={`w-11 h-11 rounded-full flex items-center justify-center font-medium text-sm flex-shrink-0 ${isDark ? 'bg-amber-950/40 text-amber-300 border border-amber-800/60' : 'bg-teal-100 text-teal-800'}`}>
+                  {getInitials(selectedCustomer.customerName)}
+                </div>
+                <div>
+                  <p className={`font-medium text-[15px] mb-0.5 ${isDark ? 'text-zinc-100' : 'text-slate-900'}`}>{selectedCustomer.customerName}</p>
+                  <p className={`text-xs ${isDark ? 'text-zinc-400' : 'text-slate-500'}`}>{selectedCustomer.companyName || 'Independent Print Shop'}</p>
+                </div>
               </div>
-              <button
-                onClick={() => setSelectedCustomer(null)}
-                className="text-slate-400 hover:text-slate-600 text-sm font-semibold px-2 py-1 rounded-lg hover:bg-slate-100"
-              >
-                Close
-              </button>
+              <select value={selectedCustomer.customerStage} onChange={(e) => { const updated = { ...selectedCustomer, customerStage: e.target.value as CustomerStage, updatedAt: new Date().toISOString() }; setSelectedCustomer(updated); onUpdateCustomer(updated); }} aria-label="Change Customer Stage" className={`text-xs h-7 px-2 border rounded-md font-medium cursor-pointer focus:outline-none transition-colors ${isDark ? 'bg-[#1F2937] border-zinc-700 text-zinc-200' : 'bg-white border-slate-200 text-slate-800'}`}>
+                <option value="Contact">Contact</option>
+                <option value="Lead">Lead</option>
+                <option value="Customer">Customer</option>
+                <option value="Client">Client</option>
+              </select>
             </div>
 
-            <div className="flex-1 overflow-y-auto py-4 space-y-4">
-              {/* Info Grid with Quick-Dial & Telegram */}
-              <div className="bg-slate-50/80 p-4 rounded-xl border border-slate-100 space-y-2.5 text-xs">
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-500 font-medium">Shop / Company:</span>
-                  <span className="font-bold text-slate-800">{selectedCustomer.companyName || '—'}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-500 font-medium">Phone:</span>
-                  <div className="flex items-center gap-2">
-                    <a href={`tel:${selectedCustomer.phoneNumber}`} className="font-bold text-teal-700 font-mono hover:underline">
-                      {selectedCustomer.phoneNumber}
-                    </a>
-                    <a 
-                      href={`https://t.me/+251${selectedCustomer.phoneNumber.replace(/^0/, '')}`} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-sky-600 bg-sky-50 px-1.5 py-0.5 rounded border border-sky-200 text-[10px] font-semibold flex items-center gap-1"
-                    >
-                      <Send className="w-2.5 h-2.5" /> Telegram
-                    </a>
-                  </div>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-500 font-medium">Email:</span>
-                  <span className="font-bold text-slate-800">{selectedCustomer.email || '—'}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-500 font-medium">Priority:</span>
-                  <span className={`font-bold px-2 py-0.5 rounded text-[11px] ${selectedCustomer.leadPriority === 'Hot' ? 'bg-red-50 text-red-700' : 'bg-slate-200 text-slate-800'}`}>
-                    {selectedCustomer.leadPriority}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center pt-1 border-t border-slate-200/60">
-                  <span className="text-slate-500 font-medium">Current Deal:</span>
-                  <span className="font-bold text-emerald-700 text-sm">{selectedCustomer.dealValue.toLocaleString()} ETB</span>
+            <div className="grid grid-cols-3 gap-2 px-4 pt-4">
+              <div className={`rounded-lg p-2.5 border ${isDark ? 'bg-zinc-950/60 border-zinc-800/60' : 'bg-slate-50 border-slate-100'}`}>
+                <p className="text-[11px] mb-1 text-zinc-400">Deal value</p>
+                <p className="text-sm font-semibold text-emerald-400">{selectedCustomer.dealValue?.toLocaleString()} ETB</p>
+              </div>
+              <div className={`rounded-lg p-2.5 border ${isDark ? 'bg-zinc-950/60 border-zinc-800/60' : 'bg-slate-50 border-slate-100'}`}>
+                <p className="text-[11px] mb-1 text-zinc-400">Priority</p>
+                <p className="text-sm font-semibold">{priorityBadge(selectedCustomer.leadPriority)}</p>
+              </div>
+              <div className={`rounded-lg p-2.5 border ${isDark ? 'bg-zinc-950/60 border-zinc-800/60' : 'bg-slate-50 border-slate-100'}`}>
+                <p className="text-[11px] mb-1 text-zinc-400">Next follow-up</p>
+                <p className="text-sm font-semibold text-zinc-200">{selectedCustomer.nextFollowUpDate || 'None'}</p>
+              </div>
+            </div>
+
+            {/* Last Contacted & Next Follow-up Due */}
+            <div className={`grid grid-cols-2 gap-2 px-4 pt-3 ${isDark ? 'bg-zinc-950/30' : 'bg-slate-50/50'}`}>
+              <div className="flex items-center gap-1.5 text-xs">
+                <Clock className="w-3 h-3 text-zinc-500" />
+                <span className={isDark ? 'text-zinc-400' : 'text-slate-500'}>Last contacted:</span>
+                <span className={`font-semibold ${isDark ? 'text-zinc-200' : 'text-slate-900'}`}>{selectedCustomer.lastContactedDate || '—'}</span>
+              </div>
+              <div className="flex items-center gap-1.5 text-xs">
+                <Phone className="w-3 h-3 text-zinc-500" />
+                <span className={isDark ? 'text-zinc-400' : 'text-slate-500'}>Next due:</span>
+                <span className={`font-semibold ${isDark ? 'text-zinc-200' : 'text-slate-900'}`}>{selectedCustomer.nextFollowUpDate || '—'}</span>
+              </div>
+            </div>
+
+            {/* Branch Reassignment Audit Log */}
+            {selectedCustomer.branchReassignmentLog && selectedCustomer.branchReassignmentLog.length > 0 && (
+              <div className={`px-4 pt-4 border-t ${isDark ? 'border-zinc-800/60' : 'border-slate-200'}`}>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-2">Branch Reassignment History</p>
+                <div className="space-y-1.5">
+                  {selectedCustomer.branchReassignmentLog.map((entry, i) => (
+                    <div key={i} className={`text-xs p-2 rounded border ${isDark ? 'bg-zinc-950/40 border-zinc-800/60 text-zinc-300' : 'bg-slate-50 border-slate-200 text-slate-600'}`}>
+                      <div className="flex items-center gap-1.5">
+                        <ArrowUpRight className="w-3 h-3 text-amber-400" />
+                        <span className="font-medium">{entry.previousBranch} → {entry.newBranch}</span>
+                      </div>
+                      <p className={`text-[10px] ${isDark ? 'text-zinc-500' : 'text-slate-400'}`}>{entry.reason} • {new Date(entry.dateTime).toLocaleDateString()}</p>
+                    </div>
+                  ))}
                 </div>
               </div>
+            )}
 
-              {/* Product Quick-Quote Calculator */}
-              <div className="bg-teal-50/60 p-3.5 rounded-xl border border-teal-200 space-y-3">
-                <h4 className="font-bold text-xs uppercase tracking-wider text-teal-900 flex items-center gap-1.5">
-                  <Calculator className="w-3.5 h-3.5 text-teal-700" />
-                  <span>Quick-Quote Calculator</span>
-                </h4>
-                <div className="space-y-2">
-                  <select
-                    value={calcProductId}
-                    onChange={(e) => setCalcProductId(e.target.value)}
-                    aria-label="Select Machinery or Blank Product"
-                    className="w-full bg-white border border-teal-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 font-medium focus:outline-none"
-                  >
-                    {products.map(p => (
-                      <option key={p.id} value={p.id}>{p.itemName} — {p.itemPrice.toLocaleString()} ETB</option>
-                    ))}
-                  </select>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="number"
-                      min="1"
-                      value={calcQuantity}
-                      onChange={(e) => setCalcQuantity(Number(e.target.value))}
-                      placeholder="Qty"
-                      aria-label="Product Quantity"
-                      className="w-20 bg-white border border-teal-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 font-medium focus:outline-none"
-                    />
-                    {(() => {
-                      const prod = products.find(p => p.id === calcProductId);
-                      const quoteTotal = prod ? prod.itemPrice * calcQuantity : 0;
-                      return (
-                        <div className="flex-1 flex items-center justify-between bg-white px-3 py-1.5 rounded-lg border border-teal-200">
-                          <span className="text-[11px] text-teal-900 font-bold">{quoteTotal.toLocaleString()} ETB</span>
-                          <button
-                            onClick={() => {
-                              const updated = { ...selectedCustomer, dealValue: quoteTotal, updatedAt: new Date().toISOString() };
-                              setSelectedCustomer(updated);
-                              onUpdateCustomer(updated);
-                            }}
-                            className="text-[10px] bg-teal-700 text-white px-2 py-1 rounded font-semibold hover:bg-teal-800"
-                          >
-                            Apply Quote
-                          </button>
+            <div className={`flex gap-1 px-4 pt-4 border-b ${isDark ? 'border-zinc-800/60' : 'border-slate-200'}`}>
+              {(['overview', 'calls', 'notes', 'productRequests', 'purchaseHistory'] as const).map(tab => (
+                <button key={tab} onClick={() => setActiveDetailTab(tab)} className={`text-xs pb-2 px-1 font-medium transition-colors ${activeDetailTab === tab ? 'border-b-2 border-amber-400 text-amber-300 font-semibold' : isDark ? 'text-zinc-400 hover:text-zinc-200' : 'text-slate-500 hover:text-slate-800'}`}>
+                  {tab === 'productRequests' ? 'Product Requests' : tab === 'purchaseHistory' ? 'Purchase History' : tab.charAt(0).toUpperCase() + tab.slice(1)}
+                </button>
+              ))}
+            </div>
+
+            {activeDetailTab === 'overview' && (
+              <div className="p-4 space-y-3">
+                {!isEditing ? (
+                  <>
+                    <table className="w-full text-xs mb-3">
+                      <tbody>
+                        <tr><td className={`py-2 flex items-center gap-1.5 ${isDark ? 'text-zinc-400' : 'text-slate-500'}`}><Phone className="w-3.5 h-3.5" /> Phone</td><td className="text-right py-2 font-mono font-medium text-teal-400">{selectedCustomer.phoneNumber}</td></tr>
+                        <tr><td className={`py-2 flex items-center gap-1.5 ${isDark ? 'text-zinc-400' : 'text-slate-500'}`}><Mail className="w-3.5 h-3.5" /> Email</td><td className={`text-right py-2 font-medium ${isDark ? 'text-zinc-200' : 'text-slate-900'}`}>{selectedCustomer.email || '—'}</td></tr>
+                        <tr><td className={`py-2 flex items-center gap-1.5 ${isDark ? 'text-zinc-400' : 'text-slate-500'}`}><Users className="w-3.5 h-3.5" /> Source</td><td className={`text-right py-2 font-medium ${isDark ? 'text-zinc-200' : 'text-slate-900'}`}>{selectedCustomer.source}</td></tr>
+                        <tr><td className={`py-2 flex items-center gap-1.5 ${isDark ? 'text-zinc-400' : 'text-slate-500'}`}><UserCircle className="w-3.5 h-3.5" /> Assigned agent</td><td className={`text-right py-2 font-medium ${isDark ? 'text-zinc-200' : 'text-slate-900'}`}>{assignedUser?.name || 'Ephrem Mamo'}</td></tr>
+                      </tbody>
+                    </table>
+                    <div className={`rounded-lg p-3.5 border ${isDark ? 'bg-zinc-950/60 border-zinc-800/60' : 'bg-slate-50 border-slate-100'} space-y-2.5`}>
+                      <p className="text-xs font-medium text-zinc-400">Quick quote calculator</p>
+                      <select value={calcProductId} onChange={(e) => setCalcProductId(e.target.value)} aria-label="Select Product" className={`w-full text-xs border rounded-lg p-2.5 font-medium focus:outline-none transition-colors ${isDark ? 'bg-[#1F2937] border-zinc-700 text-zinc-200' : 'bg-white border-slate-200 text-slate-800'}`}>
+                        {products.map(p => <option key={p.id} value={p.id}>{p.itemName} — {p.itemPrice.toLocaleString()} ETB</option>)}
+                      </select>
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[11px] text-zinc-400 font-medium">Qty:</span>
+                          <input type="number" min="1" value={calcQuantity} onChange={(e) => setCalcQuantity(Number(e.target.value))} aria-label="Quantity" className={`w-16 text-xs border rounded-lg py-1.5 px-2 text-center font-bold ${isDark ? 'bg-[#1F2937] border-zinc-700 text-zinc-100' : 'bg-white border-slate-200 text-slate-800'}`} />
                         </div>
-                      );
-                    })()}
+                        <div className="flex-1 flex items-center justify-end gap-2">
+                          <span className="text-xs font-bold text-emerald-400">{((products.find(p => p.id === calcProductId)?.itemPrice || 0) * calcQuantity).toLocaleString()} ETB</span>
+                          <button onClick={() => { const prod = products.find(p => p.id === calcProductId); if (prod) { const updated = { ...selectedCustomer, dealValue: prod.itemPrice * calcQuantity, updatedAt: new Date().toISOString() }; setSelectedCustomer(updated); onUpdateCustomer(updated); } }} className="text-xs bg-amber-600 text-white px-3 py-1.5 rounded-lg font-bold hover:bg-amber-700 transition-colors">Apply quote</button>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className={`space-y-2.5 text-xs p-3.5 rounded-lg border ${isDark ? 'bg-amber-950/20 border-zinc-700/60 text-zinc-200' : 'bg-teal-50/40 border-teal-200 text-slate-800'}`}>
+                    <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} className={`w-full border rounded-lg px-2.5 py-1.5 font-semibold ${isDark ? 'bg-[#1F2937] border-zinc-700 text-zinc-100' : 'bg-white border-teal-300 text-slate-800'}`} />
+                    <input type="text" value={editCompany} onChange={(e) => setEditCompany(e.target.value)} className={`w-full border rounded-lg px-2.5 py-1.5 font-semibold ${isDark ? 'bg-[#1F2937] border-zinc-700 text-zinc-100' : 'bg-white border-teal-300 text-slate-800'}`} />
+                    <div className="grid grid-cols-2 gap-2">
+                      <input type="text" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} className={`w-full border rounded-lg px-2.5 py-1.5 font-mono font-semibold ${isDark ? 'bg-[#1F2937] border-zinc-700 text-zinc-100' : 'bg-white border-teal-300 text-slate-800'}`} />
+                      <input type="number" value={editDealValue} onChange={(e) => setEditDealValue(Number(e.target.value))} className={`w-full border rounded-lg px-2.5 py-1.5 font-bold ${isDark ? 'bg-[#1F2937] border-zinc-700 text-emerald-400' : 'bg-white border-teal-300 text-emerald-700'}`} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <select value={editPriority} onChange={(e) => setEditPriority(e.target.value as any)} className={`w-full border rounded-lg px-2 py-1.5 font-semibold ${isDark ? 'bg-[#1F2937] border-zinc-700 text-zinc-200' : 'bg-white border-teal-300 text-slate-800'}`}>
+                        <option value="Hot">Hot</option>
+                        <option value="Warm">Warm</option>
+                        <option value="Cold">Cold</option>
+                      </select>
+                      <input type="date" value={editFollowUp} onChange={(e) => setEditFollowUp(e.target.value)} className={`w-full border rounded-lg px-2 py-1.5 font-semibold text-xs ${isDark ? 'bg-[#1F2937] border-zinc-700 text-zinc-200' : 'bg-white border-teal-300 text-slate-800'}`} />
+                    </div>
+                    <button onClick={handleSaveInlineEdit} className="w-full py-2 bg-amber-600 text-white rounded-lg font-bold hover:bg-amber-700 transition-colors mt-2">Save Changes</button>
                   </div>
-                </div>
+                )}
               </div>
+            )}
 
-              {/* Stage Changer */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Update Pipeline Stage
-                </label>
-                <select
-                  value={selectedCustomer.customerStage}
-                  onChange={(e) => {
-                    const updated = { ...selectedCustomer, customerStage: e.target.value as CustomerStage, updatedAt: new Date().toISOString() };
-                    setSelectedCustomer(updated);
-                    onUpdateCustomer(updated);
-                  }}
-                  aria-label="Change Customer Stage"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-600 font-semibold"
-                >
-                  <option value="Contact">Contact</option>
-                  <option value="Lead">Lead</option>
-                  <option value="Customer">Customer</option>
-                  <option value="Client">Client</option>
-                </select>
-              </div>
-
-              {/* Call History Timeline */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="font-bold text-xs uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
-                    <PhoneCall className="w-4 h-4 text-teal-700" />
-                    <span>Call History Log</span>
-                  </h4>
-                  <button
-                    onClick={() => onOpenLogCallForCustomer(selectedCustomer)}
-                    className="text-xs text-teal-700 font-bold hover:underline"
-                  >
-                    + Log Call
-                  </button>
-                </div>
-
-                <div className="space-y-3">
+            {activeDetailTab === 'calls' && (
+              <div className="p-4">
+                <div className="flex flex-col gap-3">
                   {callLogs.filter(cl => cl.customerId === selectedCustomer.id).length === 0 ? (
-                    <p className="text-xs text-slate-500 italic py-4 text-center">No calls logged yet for this client.</p>
+                    <p className="text-xs text-zinc-500 italic py-6 text-center">No past calls logged yet.</p>
                   ) : (
-                    callLogs
-                      .filter(cl => cl.customerId === selectedCustomer.id)
-                      .map((log) => {
-                        const user = users.find(u => u.id === log.userId);
-                        return (
-                          <div key={log.id} className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1 shadow-2xs">
-                            <div className="flex items-center justify-between text-xs">
-                              <span className="font-bold text-teal-800">{log.purpose}</span>
-                              <span className="text-slate-500 font-mono">{log.durationMinutes} mins</span>
-                            </div>
-                            <p className="text-xs text-slate-700 leading-relaxed">{log.remark}</p>
-                            <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1 border-t border-slate-200/60">
-                              <span>Agent: {user?.name || 'Agent'}</span>
-                              <span>{new Date(log.dateTime).toLocaleDateString()}</span>
-                            </div>
-                          </div>
-                        );
-                      })
+                    callLogs.filter(cl => cl.customerId === selectedCustomer.id).map((log) => (
+                      <div key={log.id} className={`border-b pb-3 ${isDark ? 'border-zinc-800/60' : 'border-slate-200'}`}>
+                        <div className="flex justify-between text-xs">
+                          <span className={`font-medium ${isDark ? 'text-zinc-200' : 'text-slate-900'}`}>{log.purpose}</span>
+                          <span className="text-zinc-400">{log.durationMinutes} mins</span>
+                        </div>
+                        <p className={`text-[11px] mt-1 ${isDark ? 'text-zinc-400' : 'text-slate-500'}`}>{users.find(u => u.id === log.userId)?.name || 'Ephrem Mamo'} &middot; {new Date(log.dateTime).toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+                        <p className={`text-xs mt-1 ${isDark ? 'text-zinc-300' : 'text-slate-700'}`}>{log.remark}</p>
+                      </div>
+                    ))
                   )}
                 </div>
               </div>
-            </div>
+            )}
 
-            {/* Footer Action */}
-            <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
-              <button
-                onClick={() => {
-                  if (confirm(`Are you sure you want to delete ${selectedCustomer.customerName}?`)) {
-                    onDeleteCustomer(selectedCustomer.id);
-                    setSelectedCustomer(null);
-                  }
-                }}
-                className="text-xs text-red-600 hover:text-red-800 font-semibold"
-              >
-                Delete Client
+            {activeDetailTab === 'notes' && (
+              <div className="p-4">
+                <textarea placeholder="Add an internal note about this client" value={editNotes} onChange={(e) => { setEditNotes(e.target.value); const updated = { ...selectedCustomer, internalNotes: e.target.value, updatedAt: new Date().toISOString() }; setSelectedCustomer(updated); onUpdateCustomer(updated); }} className={`w-full min-h-[90px] text-xs p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 transition-colors ${isDark ? 'bg-[#1F2937] border-zinc-700 text-zinc-100 placeholder-zinc-500' : 'bg-slate-50 border-slate-200 text-slate-800'}`}></textarea>
+                <p className="text-[10px] text-zinc-500 mt-1">Notes auto-save as you type.</p>
+              </div>
+            )}
+
+            {activeDetailTab === 'productRequests' && (
+              <div className="p-4">
+                <p className={`text-xs ${isDark ? 'text-zinc-400' : 'text-slate-500'}`}>Product requests for this client will appear here.</p>
+              </div>
+            )}
+
+            {activeDetailTab === 'purchaseHistory' && (
+              <div className="p-4">
+                <p className={`text-xs ${isDark ? 'text-zinc-400' : 'text-slate-500'}`}>Purchase history for this client will appear here.</p>
+              </div>
+            )}
+
+            <div className={`flex gap-2 p-4 border-t mt-auto ${isDark ? 'border-zinc-800/60 bg-zinc-950/40' : 'border-slate-200 bg-slate-50/50'}`}>
+              <button onClick={() => setIsEditing(!isEditing)} className={`flex-1 text-xs py-2 px-3 border rounded-lg font-medium flex items-center justify-center gap-1 transition-colors ${isDark ? 'border-zinc-700 bg-zinc-800 text-zinc-200 hover:bg-zinc-700' : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'}`}>
+                <Edit3 className="w-3.5 h-3.5" /> {isEditing ? 'Cancel Edit' : 'Edit'}
               </button>
-              <button
-                onClick={() => onOpenLogCallForCustomer(selectedCustomer)}
-                className="px-3.5 py-2 bg-teal-700 hover:bg-teal-800 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors flex items-center gap-1.5"
-              >
-                <PhoneCall className="w-3.5 h-3.5" />
-                <span>Log New Call</span>
+              <button onClick={() => onOpenLogCallForCustomer(selectedCustomer)} className="flex-1 text-xs py-2 px-3 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-semibold flex items-center justify-center gap-1 transition-colors">
+                <PhoneCall className="w-3.5 h-3.5" /> Log new call
+              </button>
+              <button onClick={() => { if (confirm(`Delete ${selectedCustomer.customerName}?`)) { onDeleteCustomer(selectedCustomer.id); setSelectedCustomer(null); } }} className={`border p-2 rounded-lg transition-colors ${isDark ? 'border-red-900/60 bg-red-950/30 text-red-400 hover:bg-red-900/40' : 'border-red-200 bg-red-50 text-red-600 hover:bg-red-100'}`} title="Delete client">
+                <Trash2 className="w-4 h-4" />
               </button>
             </div>
           </div>
         )}
       </div>
-
-      {/* Enhanced Add Printing Client Modal Card */}
-      {isAddModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-fade-in">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-xl w-full overflow-hidden border border-slate-200">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 bg-slate-50/80">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-teal-700 text-white flex items-center justify-center shadow-md">
-                  <UserPlus className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-lg text-slate-900">Add New Printing Client / Customer</h3>
-                  <p className="text-xs text-slate-500">Register a new lead for machinery, mugs, or custom apparel printing</p>
-                </div>
-              </div>
-              <button 
-                onClick={handleCloseAddModal} 
-                className="text-slate-400 hover:text-slate-600 p-2 rounded-xl hover:bg-slate-200/60 transition-colors font-bold text-lg"
-              >
-                ×
-              </button>
-            </div>
-
-            {/* Modal Form */}
-            <form onSubmit={handleCreateCustomer} className="p-6 space-y-5">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Client Full Name *</label>
-                  <input
-                    type="text"
-                    value={newName}
-                    onChange={(e) => setNewName(e.target.value)}
-                    placeholder="e.g. Ato Girma Abebe"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-600 focus:bg-white transition-all font-medium"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Print Shop / Company Name</label>
-                  <input
-                    type="text"
-                    value={newCompany}
-                    onChange={(e) => setNewCompany(e.target.value)}
-                    placeholder="e.g. Girma Print & Gift PLC"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-600 focus:bg-white transition-all font-medium"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Phone Number (09...) *</label>
-                  <input
-                    type="text"
-                    value={newPhone}
-                    onChange={(e) => setNewPhone(e.target.value)}
-                    placeholder="0911223344"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-600 focus:bg-white transition-all font-mono font-medium"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Email Address</label>
-                  <input
-                    type="email"
-                    value={newEmail}
-                    onChange={(e) => setNewEmail(e.target.value)}
-                    placeholder="girma@printshop.et"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-600 focus:bg-white transition-all font-medium"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Pipeline Stage</label>
-                  <select
-                    value={newStage}
-                    onChange={(e) => setNewStage(e.target.value as CustomerStage)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-600 font-semibold"
-                  >
-                    <option value="Contact">Contact</option>
-                    <option value="Lead">Lead</option>
-                    <option value="Customer">Customer</option>
-                    <option value="Client">Client</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Inquiry Source</label>
-                  <select
-                    value={newSource}
-                    onChange={(e) => setNewSource(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-600 font-semibold"
-                  >
-                    <option value="Telegram">Telegram</option>
-                    <option value="Facebook">Facebook</option>
-                    <option value="Referral">Referral</option>
-                    <option value="Previous Buyer">Previous Buyer</option>
-                    <option value="Exhibition">Exhibition</option>
-                    <option value="Digital Media">Digital Media</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Showroom</label>
-                  <select
-                    value={newBranchId}
-                    onChange={(e) => setNewBranchId(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-600 font-semibold"
-                  >
-                    {branches.map(b => (
-                      <option key={b.id} value={b.id}>{b.name}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Lead Priority</label>
-                  <select
-                    value={newPriority}
-                    onChange={(e) => setNewPriority(e.target.value as any)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-600 font-semibold"
-                  >
-                    <option value="Hot">🔥 Hot Lead</option>
-                    <option value="Warm">⚡ Warm Lead</option>
-                    <option value="Cold">❄️ Cold Lead</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Estimated Deal Value (ETB)</label>
-                  <input
-                    type="number"
-                    value={newDealValue}
-                    onChange={(e) => setNewDealValue(Number(e.target.value))}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-600 font-bold text-emerald-700"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Machinery / Product Inquiry Purpose</label>
-                <input
-                  type="text"
-                  value={newPurpose}
-                  onChange={(e) => setNewPurpose(e.target.value)}
-                  placeholder="e.g. Mug Press Machine Pro & Blank Mugs inquiry"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-600 font-medium"
-                  required
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={handleCloseAddModal}
-                  className="px-5 py-2.5 border border-slate-200 text-slate-700 hover:bg-slate-100 rounded-xl text-sm font-semibold transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-6 py-2.5 bg-teal-700 hover:bg-teal-800 text-white rounded-xl text-sm font-semibold shadow-md transition-colors flex items-center gap-2"
-                >
-                  <UserPlus className="w-4 h-4" />
-                  <span>Save Printing Client</span>
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
