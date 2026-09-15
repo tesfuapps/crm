@@ -35,13 +35,79 @@ export const ImportExportView: React.FC<ImportExportViewProps> = ({
   const secBtn = isDark ? 'bg-zinc-800 text-zinc-200 hover:bg-zinc-700 border-zinc-700' : 'bg-slate-900 hover:bg-slate-800 text-white border-slate-700';
   const inputBg = isDark ? 'bg-[#1F2937] border-zinc-700 text-zinc-200' : 'bg-slate-50 border-slate-200 text-slate-800';
 
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result as string;
+      if (!text) return;
+
+      const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+      if (lines.length < 2) {
+        setImportStatus('Error: CSV file appears empty or missing headers.');
+        return;
+      }
+
+      // Expected CSV format: Customer Name,Company Name,Phone,Stage,Source,Deal Value
+      let successCount = 0;
+      let duplicateCount = 0;
+      const newCustsList: Customer[] = [];
+
+      for (let i = 1; i < lines.length; i++) {
+        const cols = lines[i].split(',').map(c => c.replace(/^"|"$/g, '').trim());
+        if (cols.length < 3) continue;
+
+        const customerName = cols[0] || 'Unknown Client';
+        const companyName = cols[1] && cols[1] !== '' ? cols[1] : undefined;
+        const phoneNumber = cols[2] || '0911000000';
+        const customerStage = (cols[3] as any) || 'Lead';
+        const source = cols[4] || 'CSV Import';
+        const dealValue = Number(cols[5]) || 20000;
+
+        const existing = customers.find(c => c.phoneNumber === phoneNumber);
+        if (existing) {
+          duplicateCount++;
+        } else {
+          successCount++;
+          newCustsList.push({
+            id: 'csv_' + Date.now() + '_' + i,
+            customerName,
+            companyName,
+            phoneNumber,
+            customerType: 'New',
+            source,
+            purposeOfCall: '[AI Completed] Manual CSV Import - Initial inquiry regarding printing machinery & blanks.',
+            customerStage,
+            assignedUserId: 'u1',
+            branchId: 'unassigned',
+            mainBranchId: 'unassigned',
+            leadPriority: 'Warm',
+            dealValue,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            consecutivePurchaseStreak: {},
+            branchReassignmentLog: [],
+          });
+        }
+      }
+
+      if (newCustsList.length > 0) {
+        onImportCustomers(newCustsList);
+      }
+      setValidationReport({ success: successCount, duplicates: duplicateCount, flaggedForReview: 0 });
+      setImportStatus(`Successfully imported ${successCount} customers from CSV file (${duplicateCount} duplicate phone numbers skipped).`);
+    };
+    reader.readAsText(file);
+  };
+
   const handleHistoricalMigration = () => {
-    // Simulated historical Google Sheets 3-4 years data batch with intentional fuzzy duplicates & blank reasons
     const historicalBatch: HistoricalRecord[] = [
       { communicationId: 'HIST-2023-001', customerName: 'Ato Girma Bekele', companyName: 'Girma Printing Press', phoneNumber: '0911334455', callDuration: 14, reasonForCall: '', customerStatus: 'Old', callStatus: 'Sales' },
       { communicationId: 'HIST-2023-002', customerName: 'ABC Trading Plc', companyName: 'ABC Trading', phoneNumber: '0912445566', callDuration: 8, reasonForCall: 'Inquired about A2 Heat Press pricing', customerStatus: 'New', callStatus: 'Evaluation' },
       { communicationId: 'HIST-2023-003', customerName: 'W/ro Almaz Tadesse', companyName: 'Private', phoneNumber: '0913556677', callDuration: 10, reasonForCall: 'Sublimation mug blanks wholesale order', customerStatus: 'Old', callStatus: 'Sales' },
-      { communicationId: 'HIST-2023-004', customerName: 'A.B.C Trading', companyName: 'A.B.C Trading Plc', phoneNumber: '0912445566', callDuration: 12, reasonForCall: '', customerStatus: 'New', callStatus: 'Availability-check' }, // Fuzzy duplicate test
+      { communicationId: 'HIST-2023-004', customerName: 'A.B.C Trading', companyName: 'A.B.C Trading Plc', phoneNumber: '0912445566', callDuration: 12, reasonForCall: '', customerStatus: 'New', callStatus: 'Availability-check' },
     ];
 
     let successCount = 0;
@@ -50,12 +116,10 @@ export const ImportExportView: React.FC<ImportExportViewProps> = ({
     const flaggedList: { historical: HistoricalRecord; existingCustomer: Customer; reason: string }[] = [];
 
     historicalBatch.forEach(rec => {
-      // AI Reason Completion if blank
       const finalReason = rec.reasonForCall.trim() === ''
         ? `[AI Completed] Routine ${rec.callStatus.toLowerCase()} inquiry regarding printing machinery and accessories.`
         : rec.reasonForCall;
 
-      // Fuzzy duplicate detection by phone or similar company name
       const exactMatch = customers.find(c => c.phoneNumber === rec.phoneNumber);
       const fuzzyMatch = customers.find(c => c.companyName && rec.companyName !== 'Private' && c.companyName.toLowerCase().includes(rec.companyName.toLowerCase().slice(0, 5)));
 
@@ -78,7 +142,7 @@ export const ImportExportView: React.FC<ImportExportViewProps> = ({
           purposeOfCall: finalReason,
           customerStage: rec.customerStatus === 'Old' ? 'Client' : 'Lead',
           assignedUserId: 'u1',
-          branchId: 'unassigned', // Default unassigned per spec
+          branchId: 'unassigned',
           mainBranchId: 'unassigned',
           leadPriority: 'Warm',
           dealValue: 15000,
@@ -105,7 +169,7 @@ export const ImportExportView: React.FC<ImportExportViewProps> = ({
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
-    link.setAttribute("download", `ttm_crm_historical_export_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute("download", `ttm_crm_database_export_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -113,58 +177,60 @@ export const ImportExportView: React.FC<ImportExportViewProps> = ({
 
   return (
     <div className="space-y-6">
-      <div className={`p-6 rounded-xl border ${cardBg}`}>
+      <div className={`p-6 rounded-2xl border ${cardBg}`}>
         <h2 className="text-xl font-bold text-white flex items-center gap-2">
           <Database className="w-5 h-5 text-amber-400" />
-          <span>Historical Google Sheets Migration & Bulk Data Import</span>
+          <span>Data Import & CSV Upload Center</span>
         </h2>
         <p className={`text-sm mt-0.5 ${subText}`}>
-          Import 3-4+ years of manual communication logs with automated AI reason completion and fuzzy duplicate merging for Admin review.
+          Upload your CSV files manually or run automated Google Sheets historical migrations with AI reason completion.
         </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className={`p-6 rounded-xl border ${cardBg} space-y-4`}>
+        {/* Manual CSV File Upload */}
+        <div className={`p-6 rounded-2xl border ${cardBg} space-y-4`}>
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-amber-950/40 text-amber-300 flex items-center justify-center border border-amber-800/60"><Upload className="w-5 h-5" /></div>
-            <div><h3 className="font-bold text-white">Google Sheets Historical Import</h3><p className={`text-xs ${subText}`}>Structured CSV migration with AI reasoning</p></div>
+            <div className="w-10 h-10 rounded-xl bg-amber-950/40 text-amber-300 flex items-center justify-center border border-amber-800/60"><Upload className="w-5 h-5" /></div>
+            <div><h3 className="font-bold text-white">Manual CSV File Upload</h3><p className={`text-xs ${subText}`}>Import customers from custom CSV spreadsheets</p></div>
           </div>
-          <div className={`border-2 border-dashed ${borderSub} rounded-xl p-8 text-center space-y-3`}>
+          <div className={`border-2 border-dashed ${borderSub} rounded-2xl p-8 text-center space-y-3`}>
             <FileText className="w-10 h-10 text-zinc-500 mx-auto" />
-            <p className={`text-sm font-medium ${subText}`}>Upload historical Sheets export (CSV)</p>
-            <button onClick={handleHistoricalMigration} className={`px-4 py-2 ${primaryBtn} rounded-lg text-xs font-medium flex items-center gap-1.5 mx-auto`}>
-              <Sparkles className="w-4 h-4" />
-              <span>Run Historical Migration & AI Import</span>
-            </button>
+            <p className={`text-sm font-medium ${subText}`}>Select or drag & drop your CSV file here</p>
+            <label className={`inline-block px-4 py-2 ${primaryBtn} rounded-xl text-xs font-semibold cursor-pointer shadow-sm`}>
+              <span>Browse CSV File</span>
+              <input type="file" accept=".csv" onChange={handleFileUpload} className="hidden" />
+            </label>
           </div>
           {importStatus && validationReport && (
-            <div className={`p-4 ${inputBg} rounded-lg space-y-2 text-xs border ${borderSub}`}>
+            <div className={`p-4 ${inputBg} rounded-xl space-y-2 text-xs border ${borderSub}`}>
               <div className="flex items-center gap-2 text-emerald-400 font-bold"><CheckCircle2 className="w-4 h-4" /> <span>{importStatus}</span></div>
               <div className="grid grid-cols-3 gap-2 pt-2 border-t border-zinc-800/60 text-zinc-300">
                 <div>Imported: <strong className="text-emerald-400">{validationReport.success}</strong></div>
                 <div>Duplicates: <strong className="text-amber-400">{validationReport.duplicates}</strong></div>
-                <div>Flagged Review: <strong className="text-purple-400">{validationReport.flaggedForReview}</strong></div>
+                <div>Review Queue: <strong className="text-purple-400">{validationReport.flaggedForReview}</strong></div>
               </div>
             </div>
           )}
         </div>
 
-        <div className={`p-6 rounded-xl border ${cardBg} space-y-4`}>
+        {/* Historical Google Sheets Migration */}
+        <div className={`p-6 rounded-2xl border ${cardBg} space-y-4`}>
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-blue-950/40 text-blue-300 flex items-center justify-center border border-blue-800/60"><Download className="w-5 h-5" /></div>
-            <div><h3 className="font-bold text-white">Export CRM Database</h3><p className={`text-xs ${subText}`}>Download customer records to CSV</p></div>
+            <div className="w-10 h-10 rounded-xl bg-purple-950/40 text-purple-300 flex items-center justify-center border border-purple-800/60"><Sparkles className="w-5 h-5" /></div>
+            <div><h3 className="font-bold text-white">Google Sheets Historical Migration</h3><p className={`text-xs ${subText}`}>Batch import with AI reason completion</p></div>
           </div>
-          <div className={`${inputBg} p-6 rounded-xl border ${borderSub} space-y-4`}>
-            <p className={`text-xs ${subText} leading-relaxed`}>Export all {customers.length} customer records along with historical call logs, deal values, and status tags for offline analysis.</p>
-            <button onClick={handleExportAll} className={`w-full py-2.5 ${secBtn} rounded-lg text-sm font-medium flex items-center justify-center gap-2`}>
-              <Download className="w-4 h-4" /> <span>Download Full Database CSV</span>
+          <div className={`${inputBg} p-6 rounded-2xl border ${borderSub} space-y-4`}>
+            <p className={`text-xs ${subText} leading-relaxed`}>Run automated migration for legacy 3-4 year sheets with fuzzy duplicate detection and AI reasoning for blank call purposes.</p>
+            <button onClick={handleHistoricalMigration} className={`w-full py-2.5 ${secBtn} rounded-xl text-sm font-medium flex items-center justify-center gap-2 border`}>
+              <Sparkles className="w-4 h-4 text-amber-400" /> <span>Run Historical Migration Tool</span>
             </button>
           </div>
         </div>
       </div>
 
       {reviewQueue.length > 0 && (
-        <div className={`p-6 rounded-xl border ${cardBg} space-y-4`}>
+        <div className={`p-6 rounded-2xl border ${cardBg} space-y-4`}>
           <div className="flex items-center gap-3 pb-3 border-b border-zinc-800/60">
             <GitMerge className="w-5 h-5 text-purple-400" />
             <h3 className="font-bold text-white text-base">Fuzzy Duplicate Review Queue (Admin Confirmation)</h3>
