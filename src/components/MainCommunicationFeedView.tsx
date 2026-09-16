@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Customer, CallLog, Branch, User } from '../types/crm';
-import { PhoneCall, Filter, Search, Calendar, Clock, UserCheck, CheckCircle2, AlertTriangle, ArrowRight, X, Bookmark, Download, Save, Trash2, TrendingUp, Send } from 'lucide-react';
+import { PhoneCall, Filter, Search, Calendar, Clock, UserCheck, CheckCircle2, AlertTriangle, ArrowRight, X, Bookmark, Download, Save, Trash2, TrendingUp } from 'lucide-react';
 
 interface MainCommunicationFeedViewProps {
   customers: Customer[];
@@ -46,7 +46,6 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
   onOpenLogCall,
 }) => {
   const isDark = theme === 'dark';
-  const [searchQuery, setSearchQuery] = useState('');
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
   const [selectedBranch, setSelectedBranch] = useState<string>(selectedBranchId);
   const [selectedRep, setSelectedRep] = useState<string>('all');
@@ -83,15 +82,6 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
   const filteredLogs = callLogs.filter(log => {
     const cust = customers.find(c => c.id === log.customerId);
     if (!cust) return false;
-
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      const matchName = cust.customerName.toLowerCase().includes(q);
-      const matchComp = cust.companyName && cust.companyName.toLowerCase().includes(q);
-      const matchPhone = cust.phoneNumber.includes(q);
-      const matchPurpose = log.purpose.toLowerCase().includes(q);
-      if (!matchName && !matchComp && !matchPhone && !matchPurpose) return false;
-    }
 
     if (selectedBranch !== 'all') {
       const branchObj = branches.find(b => b.id === selectedBranch);
@@ -132,6 +122,7 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
     return true;
   });
 
+  // Group logs by date
   const groupedByDate: Record<string, CallLog[]> = {};
   filteredLogs.forEach(log => {
     const dateKey = log.dateTime.split('T')[0];
@@ -207,13 +198,14 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
   };
 
   const exportToCSV = () => {
-    const header = "Communication ID,Date & Time,Sales Rep,Customer Name,Company Name,Phone,Branch,Call Status,Purpose,Duration (Mins),Customer Type,Remark\n";
-    const rows = filteredLogs.map(log => {
+    const header = "Communication ID,Date & Time,Sales Rep,Customer Name,Company Name,Phone,Branch,Call Status,Purpose,Duration,Customer Type,Remark\n";
+    const rows = filteredLogs.map((log, index) => {
       const cust = customers.find(c => c.id === log.customerId);
       const rep = users.find(u => u.id === log.userId);
       const branch = branches.find(b => b.id === cust?.branchId);
       const status = (log as any).callStatus || 'Sales';
-      return `"${log.id}","${log.dateTime}","${rep?.name || 'Staff'}","${cust?.customerName || ''}","${cust?.companyName || ''}","${cust?.phoneNumber || ''}","${branch?.name || ''}","${status}","${log.purpose}",${log.durationMinutes},"${cust?.customerType || 'New'}","${log.remark.replace(/"/g, '""')}"`;
+      const callCode = `TTM-${String(index + 1).padStart(5, '0')}`;
+      return `"${callCode}","${log.dateTime}","${rep?.name || 'Staff'}","${cust?.customerName || ''}","${cust?.companyName || ''}","${cust?.phoneNumber || ''}","${branch?.name || ''}","${status}","${log.purpose}","${log.durationMinutes}m 00s","${cust?.customerType || 'New'}","${log.remark.replace(/"/g, '""')}"`;
     }).join("\n");
 
     const blob = new Blob([header + rows], { type: 'text/csv;charset=utf-8;' });
@@ -228,6 +220,16 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
 
   const exportToExcel = () => {
     exportToCSV();
+  };
+
+  const formatDuration = (seconds?: number, minutes?: number) => {
+    const totalSecs = seconds ?? (minutes ? minutes * 60 : 0);
+    if (!totalSecs) return '0s';
+    const m = Math.floor(totalSecs / 60);
+    const s = totalSecs % 60;
+    if (m === 0) return `${s}s`;
+    if (s === 0) return `${m}m 00s`;
+    return `${m}m ${String(s).padStart(2, '0')}s`;
   };
 
   const getStatusBadge = (status: string) => {
@@ -247,9 +249,10 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
     return name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
   };
 
-  const selectedCustomer = selectedCallLog ? customers.find(c => c.id === selectedCallLog.customerId) : null;
   const cardBg = 'bg-[#18181b] border-zinc-800/60';
   const inputBg = 'bg-[#121212] border-neutral-700 text-neutral-200';
+
+  const selectedCustomer = selectedCallLog ? customers.find(c => c.id === selectedCallLog.customerId) : null;
 
   return (
     <div className="flex flex-col gap-5 w-full relative max-w-7xl mx-auto pb-12">
@@ -272,115 +275,105 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
         </button>
       </div>
 
-      {/* TOP HORIZONTAL FILTER BAR */}
-      <div className="w-full bg-[#161616] border border-neutral-800/80 rounded-xl p-3 flex flex-wrap items-center justify-between gap-3 shadow-sm">
-        <div className="flex flex-wrap items-center gap-3 flex-1">
-          {/* Quick Search */}
-          <div className="relative min-w-[240px]">
-            <Search className="w-4 h-4 text-neutral-500 absolute left-3 top-2.5" />
-            <input
-              type="text"
-              placeholder="Search name, company, phone..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-9 bg-[#0d0d0d] border border-neutral-800 rounded-lg pl-9 pr-3 text-xs text-neutral-200 placeholder-neutral-500 focus:outline-none focus:border-amber-500"
-            />
-          </div>
-
-          {/* Branch Dropdown */}
-          <select 
-            value={selectedBranch} 
-            onChange={(e) => setSelectedBranch(e.target.value)}
-            className="h-9 bg-[#0d0d0d] border border-neutral-800 hover:border-neutral-700 rounded-lg px-3 text-xs text-neutral-300 focus:outline-none focus:border-amber-500 font-medium"
-          >
-            <option value="all">All Branches</option>
-            <option value="bole">Bole Printing Showroom</option>
-            <option value="piassa">Piassa Retail Branch</option>
-            <option value="mexico">Mexico Machinery Hub</option>
-          </select>
-
-          {/* Sales Rep Dropdown */}
-          <select 
-            value={selectedRep} 
-            onChange={(e) => setSelectedRep(e.target.value)}
-            className="h-9 bg-[#0d0d0d] border border-neutral-800 hover:border-neutral-700 rounded-lg px-3 text-xs text-neutral-300 focus:outline-none focus:border-amber-500 font-medium"
-          >
-            <option value="all">All Reps</option>
-            <option value="ephrem">Ephrem Mamo</option>
-            <option value="kidus">Kidus Alemayehu</option>
-            <option value="mekdes">Mekdes Zewdu</option>
-          </select>
-
-          {/* Customer Type Toggle */}
-          <div className="h-9 bg-[#0d0d0d] border border-neutral-800 rounded-lg p-1 flex items-center text-xs">
-            {['All', 'New', 'Old'].map((type) => (
-              <button
-                key={type}
-                onClick={() => setCustomerType(type)}
-                className={`px-3 py-1 rounded-md font-medium transition-colors ${
-                  customerType === type 
-                    ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40' 
-                    : 'text-neutral-400 hover:text-neutral-200'
-                }`}
-              >
-                {type}
-              </button>
-            ))}
-          </div>
-
-          {/* Date Range Selector */}
-          <select 
-            value={selectedDateRange} 
-            onChange={(e) => setSelectedDateRange(e.target.value)}
-            className="h-9 bg-[#0d0d0d] border border-neutral-800 hover:border-neutral-700 rounded-lg px-3 text-xs text-neutral-300 focus:outline-none focus:border-amber-500 font-medium"
-          >
-            <option value="today">Today</option>
-            <option value="yesterday">Yesterday</option>
-            <option value="this_week">This Week</option>
-            <option value="last_week">Last Week</option>
-            <option value="this_month">This Month</option>
-          </select>
-        </div>
-
-        {/* Export Actions & Save View (Aligned Far Right) */}
-        <div className="flex items-center gap-2">
-          {savedPresets.length > 0 && (
-            <select onChange={(e) => { const p = savedPresets.find(x => x.id === e.target.value); if (p) applyPreset(p); }} className="h-9 bg-[#0d0d0d] border border-neutral-800 rounded-lg px-2 text-xs font-medium text-neutral-300">
-              <option value="">Saved Views ({savedPresets.length})...</option>
-              {savedPresets.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+      {/* TOP HORIZONTAL FILTER BAR (Single Line) */}
+      <div className="w-full bg-[#181818] border border-neutral-800 rounded-xl p-4 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-3 flex-1">
+            {/* Branch Dropdown */}
+            <select 
+              value={selectedBranch} 
+              onChange={(e) => setSelectedBranch(e.target.value)}
+              className="h-9 bg-[#121212] border border-neutral-700 rounded-lg px-3 text-xs text-neutral-200 focus:outline-none focus:border-amber-500 font-medium"
+            >
+              <option value="all">All Branches</option>
+              <option value="bole">Bole Printing Showroom</option>
+              <option value="piassa">Piassa Retail Branch</option>
+              <option value="mexico">Mexico Machinery Hub</option>
             </select>
-          )}
-          <button 
-            onClick={handleSaveFilter}
-            className="h-9 px-3 bg-[#0d0d0d] hover:bg-neutral-800 border border-neutral-800 rounded-lg text-xs font-medium text-neutral-300 transition-colors flex items-center gap-1.5"
-          >
-            💾 Save View
-          </button>
-          <button 
-            onClick={exportToCSV}
-            className="h-9 px-3 bg-[#0d0d0d] hover:bg-neutral-800 border border-neutral-800 rounded-lg text-xs font-medium text-neutral-300 transition-colors"
-          >
-            CSV
-          </button>
-          <button 
-            onClick={exportToExcel}
-            className="h-9 px-3 bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-700/50 rounded-lg text-xs font-medium text-emerald-300 transition-colors"
-          >
-            Excel (.xlsx)
-          </button>
+
+            {/* Sales Rep Dropdown */}
+            <select 
+              value={selectedRep} 
+              onChange={(e) => setSelectedRep(e.target.value)}
+              className="h-9 bg-[#121212] border border-neutral-700 rounded-lg px-3 text-xs text-neutral-200 focus:outline-none focus:border-amber-500 font-medium"
+            >
+              <option value="all">All Reps</option>
+              <option value="ephrem">Ephrem Mamo</option>
+              <option value="kidus">Kidus Alemayehu</option>
+              <option value="mekdes">Mekdes Zewdu</option>
+            </select>
+
+            {/* Customer Type Toggle */}
+            <div className="h-9 bg-[#121212] border border-neutral-700 rounded-lg p-0.5 flex items-center text-xs">
+              {['All', 'New', 'Old'].map((type) => (
+                <button
+                  key={type}
+                  onClick={() => setCustomerType(type)}
+                  className={`px-3 py-1 rounded-md font-medium transition-colors ${
+                    customerType === type 
+                      ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40' 
+                      : 'text-neutral-400 hover:text-neutral-200'
+                  }`}
+                >
+                  {type}
+                </button>
+              ))}
+            </div>
+
+            {/* Date Range Selector */}
+            <select 
+              value={selectedDateRange} 
+              onChange={(e) => setSelectedDateRange(e.target.value)}
+              className="h-9 bg-[#121212] border border-neutral-700 rounded-lg px-3 text-xs text-neutral-200 focus:outline-none focus:border-amber-500 font-medium"
+            >
+              <option value="today">Today</option>
+              <option value="yesterday">Yesterday</option>
+              <option value="this_week">This Week</option>
+              <option value="last_week">Last Week</option>
+              <option value="this_month">This Month</option>
+            </select>
+          </div>
+
+          {/* Export Actions & Save View Aligned Far Right */}
+          <div className="flex items-center gap-2">
+            {savedPresets.length > 0 && (
+              <select onChange={(e) => { const p = savedPresets.find(x => x.id === e.target.value); if (p) applyPreset(p); }} className="h-9 bg-[#121212] border border-neutral-700 rounded-lg px-2 text-xs font-medium text-neutral-300">
+                <option value="">Saved Views ({savedPresets.length})...</option>
+                {savedPresets.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+            )}
+            <button 
+              onClick={handleSaveFilter}
+              className="h-9 px-3 bg-[#222] hover:bg-[#2a2a2a] border border-neutral-700 rounded-lg text-xs font-medium text-neutral-300 transition-colors flex items-center gap-1.5"
+            >
+              💾 Save View
+            </button>
+            <button 
+              onClick={exportToCSV}
+              className="h-9 px-3 bg-[#222] hover:bg-[#2a2a2a] border border-neutral-700 rounded-lg text-xs font-medium text-neutral-300 transition-colors"
+            >
+              CSV
+            </button>
+            <button 
+              onClick={exportToExcel}
+              className="h-9 px-3 bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-700/50 rounded-lg text-xs font-medium text-emerald-300 transition-colors"
+            >
+              Excel (.xlsx)
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* COMPACT 7-STATUS ROLLUP ENGINE */}
+      {/* COMPACT 7-STATUS ROLLUP CARDS */}
       <div className="space-y-2">
         <div className="flex items-center justify-between px-1">
           <h3 className="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
             <TrendingUp className="w-4 h-4" />
             <span>{getRollupTitle()}</span>
           </h3>
-          <span className="text-xs font-mono text-neutral-400">{filteredLogs.length} calls • {totalMinutes} total mins</span>
+          <span className="text-xs font-mono text-neutral-400">{filteredLogs.length} calls • {formatDuration(totalMinutes * 60)} total</span>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2.5">
           {CALL_STATUSES.map(statusObj => {
             const status = statusObj.label;
             const isActive = selectedStatuses.includes(status);
@@ -388,24 +381,24 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
               <button
                 key={status}
                 onClick={() => toggleStatusFilter(status)}
-                className={`flex flex-col items-center justify-center p-2.5 rounded-lg border transition-all text-left cursor-pointer ${
+                className={`flex flex-col items-center justify-center p-2 rounded-lg border transition-all ${
                   isActive
-                    ? 'bg-amber-500/15 border-amber-500 text-amber-300 shadow-sm ring-1 ring-amber-500/30'
-                    : 'bg-[#141414] border-neutral-800/80 text-neutral-400 hover:border-neutral-700 hover:text-neutral-200'
+                    ? 'bg-amber-500/15 border-amber-500 text-amber-300 shadow-sm'
+                    : 'bg-[#181818] border-neutral-800 text-neutral-400 hover:border-neutral-700 hover:text-neutral-200'
                 }`}
               >
-                <span className="text-[10px] uppercase font-semibold tracking-wider text-neutral-400 truncate w-full text-center">
+                <span className="text-[11px] font-medium uppercase tracking-wider text-neutral-400 truncate w-full text-center">
                   {status}
                 </span>
-                <span className="text-lg font-bold text-neutral-100 mt-1 font-mono">
+                <span className="text-base font-bold text-neutral-100 mt-0.5 font-mono">
                   {statusCounts[status]}
                 </span>
               </button>
             );
           })}
-          <div className="flex flex-col items-center justify-center p-2.5 rounded-lg border bg-[#141414] border-neutral-800/80 text-neutral-300">
-            <span className="text-[10px] uppercase font-semibold tracking-wider text-neutral-400 truncate w-full text-center">New / Old</span>
-            <span className="text-sm font-bold text-amber-300 mt-1 font-mono">{newCustCount} / {oldCustCount}</span>
+          <div className="flex flex-col items-center justify-center p-2 rounded-lg border bg-[#18181b] border-neutral-800 text-neutral-300">
+            <span className="text-[11px] font-medium uppercase tracking-wider text-neutral-400 truncate w-full text-center">New / Old</span>
+            <span className="text-sm font-bold text-amber-300 mt-0.5 font-mono">{newCustCount} / {oldCustCount}</span>
           </div>
         </div>
       </div>
@@ -423,10 +416,10 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
             </button>
           ))}
         </div>
-        <span className="text-xs text-zinc-400 font-mono">Showing {filteredLogs.length} communications • {totalMinutes} total mins</span>
+        <span className="text-xs text-zinc-400 font-mono">Showing {filteredLogs.length} communications • {formatDuration(totalMinutes * 60)} total</span>
       </div>
 
-      {/* Date-Grouped Feeds (Full Width) */}
+      {/* Date-Grouped Feeds (Full Width) with Call ID & Min+Sec Duration */}
       <div className="space-y-6">
         {filteredLogs.length === 0 ? (
           <div className="p-12 text-center rounded-xl border bg-[#18181b] border-neutral-800">
@@ -435,25 +428,25 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
         ) : (
           sortedDates.map(dateStr => {
             const dayLogs = groupedByDate[dateStr];
-            const dayTotalMins = dayLogs.reduce((s, l) => s + (l.durationMinutes || 0), 0);
+            const dayTotalSecs = dayLogs.reduce((s, l) => s + ((l.durationMinutes || 0) * 60), 0);
             const isToday = dateStr === todayStr;
             const formattedDate = new Date(dateStr).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' });
 
             return (
               <div key={dateStr} className="space-y-2">
                 {/* Date Section Header */}
-                <div className="flex items-center justify-between px-4 py-2.5 bg-[#181818] border-y border-neutral-800 text-xs font-semibold text-amber-500 uppercase tracking-wider rounded-xl">
+                <div className="flex items-center justify-between px-4 py-2.5 bg-[#1c1c1c] rounded-lg border border-neutral-800 text-xs font-semibold text-amber-500 uppercase tracking-wider">
                   <div className="flex items-center gap-2">
                     <Calendar className="w-4 h-4 text-amber-400" />
                     <span className="font-bold text-neutral-200">{formattedDate}</span>
                     {isToday && (
-                      <span className="px-2 py-0.5 text-[10px] bg-emerald-500/10 text-emerald-400 rounded-md border border-emerald-500/20 font-medium">
+                      <span className="px-1.5 py-0.5 text-[10px] bg-emerald-500/10 text-emerald-400 rounded border border-emerald-500/20 font-medium">
                         TODAY
                       </span>
                     )}
                   </div>
                   <span className="text-xs text-neutral-400 font-mono">
-                    {dayLogs.length} calls • {dayTotalMins} mins
+                    {dayLogs.length} calls • {formatDuration(dayTotalSecs)}
                   </span>
                 </div>
 
@@ -461,6 +454,7 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
                   <table className="w-full text-left text-xs">
                     <thead className="text-[11px] font-bold uppercase text-neutral-400 border-b border-neutral-800/80 bg-zinc-950/80">
                       <tr>
+                        <th className="py-3 px-4">Call ID</th>
                         <th className="py-3 px-4">Salesperson</th>
                         <th className="py-3 px-4">Customer & Print Shop</th>
                         <th className="py-3 px-4">Purpose</th>
@@ -470,11 +464,12 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-neutral-800/50">
-                      {dayLogs.map(log => {
+                      {dayLogs.map((log, index) => {
                         const cust = customers.find(c => c.id === log.customerId);
                         const rep = users.find(u => u.id === log.userId);
                         const status = (log as any).callStatus || 'Sales';
                         const isSelected = selectedCallLog?.id === log.id;
+                        const callCode = `TTM-${String(index + 1).padStart(5, '0')}`;
                         const cleanPhone = cust?.phoneNumber ? cust.phoneNumber.replace(/^0/, '') : '';
 
                         return (
@@ -483,6 +478,11 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
                             onClick={() => setSelectedCallLog(log)}
                             className={`border-b border-neutral-800/50 hover:bg-[#1a1a1a] transition-colors cursor-pointer group ${isSelected ? 'bg-amber-950/25 border-l-2 border-amber-500' : ''}`}
                           >
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <span className="font-mono text-[11px] font-semibold tracking-wider text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded">
+                                {callCode}
+                              </span>
+                            </td>
                             <td className="py-3 px-4">
                               <div className="flex items-center gap-2">
                                 <div className="w-6 h-6 rounded-full bg-neutral-800 border border-neutral-700 flex items-center justify-center text-[10px] font-bold text-neutral-300">
@@ -499,8 +499,10 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
                                 {cust?.companyName || 'Independent'} • <span className="font-mono text-[11px] text-neutral-500">{cust?.phoneNumber}</span>
                               </p>
                             </td>
-                            <td className="py-3 px-4 text-neutral-300 max-w-[250px] truncate">{log.purpose}</td>
-                            <td className="py-3 px-4 font-mono text-neutral-400">{log.durationMinutes}m</td>
+                            <td className="py-3 px-4 text-neutral-300 max-w-[220px] truncate">{log.purpose}</td>
+                            <td className="px-4 py-3 whitespace-nowrap font-mono text-xs text-neutral-200">
+                              {formatDuration(undefined, log.durationMinutes)}
+                            </td>
                             <td className="py-3 px-4">{getStatusBadge(status)}</td>
                             <td className="py-3 px-4 text-right" onClick={(e) => e.stopPropagation()}>
                               <div className="flex items-center justify-end gap-1.5 opacity-80 group-hover:opacity-100">
@@ -542,7 +544,7 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
                   value={newPresetName}
                   onChange={(e) => setNewPresetName(e.target.value)}
                   placeholder="e.g. Bole Out-of-Stock This Week"
-                  className={`w-full ${inputBg} border rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-amber-600`}
+                  className="w-full bg-[#121212] border border-neutral-700 rounded-xl px-3.5 py-2.5 text-xs text-neutral-200 focus:outline-none focus:ring-1 focus:ring-amber-600"
                   required
                 />
               </div>
@@ -576,7 +578,7 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
                 <div className="font-bold text-amber-300 text-sm">Current Call Summary</div>
                 <div className="flex justify-between"><span className="text-zinc-400">Status:</span><span>{getStatusBadge((selectedCallLog as any).callStatus || 'Sales')}</span></div>
                 <div className="flex justify-between"><span className="text-zinc-400">Purpose:</span><span className="text-zinc-200">{selectedCallLog.purpose}</span></div>
-                <div className="flex justify-between"><span className="text-zinc-400">Duration:</span><span className="font-mono text-zinc-200">{selectedCallLog.durationMinutes} minutes</span></div>
+                <div className="flex justify-between"><span className="text-zinc-400">Duration:</span><span className="font-mono text-zinc-200">{formatDuration(undefined, selectedCallLog.durationMinutes)}</span></div>
                 <div className="flex justify-between"><span className="text-zinc-400">Lead Source:</span><span className="text-zinc-200">{selectedCustomer.source}</span></div>
               </div>
 
