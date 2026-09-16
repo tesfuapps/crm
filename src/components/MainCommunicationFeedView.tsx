@@ -31,7 +31,6 @@ interface CommPreset {
   branchId: string;
   userId: string;
   customerType: string;
-  leadSource: string;
   dateRange: string;
 }
 
@@ -47,13 +46,12 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
   onOpenLogCall,
 }) => {
   const isDark = theme === 'dark';
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
-  const [filterBranchId, setFilterBranchId] = useState<string>(selectedBranchId);
-  const [filterUserId, setFilterUserId] = useState<string>('all');
-  const [filterCustomerType, setFilterCustomerType] = useState<string>('all');
-  const [filterLeadSource, setFilterLeadSource] = useState<string>('all');
-  const [dateRange, setDateRange] = useState<string>('week');
+  const [selectedBranch, setSelectedBranch] = useState<string>(selectedBranchId);
+  const [selectedRep, setSelectedRep] = useState<string>('all');
+  const [customerType, setCustomerType] = useState<string>('All');
+  const [selectedDateRange, setSelectedDateRange] = useState<string>('this_week');
   const [activeTab, setActiveTab] = useState<'feed' | 'unresolved' | 'my-calls'>('feed');
   const [selectedCallLog, setSelectedCallLog] = useState<CallLog | null>(null);
 
@@ -77,16 +75,18 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
 
   const now = new Date();
   const todayStr = now.toISOString().split('T')[0];
+  const yesterdayStr = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
   const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
   const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-  const oneYearAgo = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
 
   const filteredLogs = callLogs.filter(log => {
     const cust = customers.find(c => c.id === log.customerId);
     if (!cust) return false;
 
-    if (searchTerm.trim()) {
-      const q = searchTerm.toLowerCase();
+    // Quick Search
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
       const matchName = cust.customerName.toLowerCase().includes(q);
       const matchComp = cust.companyName && cust.companyName.toLowerCase().includes(q);
       const matchPhone = cust.phoneNumber.includes(q);
@@ -94,20 +94,42 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
       if (!matchName && !matchComp && !matchPhone && !matchPurpose) return false;
     }
 
-    if (filterBranchId !== 'all' && cust.branchId !== filterBranchId) return false;
-    if (filterUserId !== 'all' && log.userId !== filterUserId) return false;
-    if (filterCustomerType !== 'all' && cust.customerType !== filterCustomerType) return false;
-    if (filterLeadSource !== 'all' && cust.source !== filterLeadSource) return false;
+    // Branch filter
+    if (selectedBranch !== 'all') {
+      const branchObj = branches.find(b => b.id === selectedBranch);
+      const branchName = branchObj ? branchObj.name.toLowerCase() : '';
+      const custBranch = branches.find(b => b.id === cust.branchId)?.name.toLowerCase() || '';
+      if (selectedBranch === 'bole' && !custBranch.includes('bole')) return false;
+      if (selectedBranch === 'piassa' && !custBranch.includes('piassa')) return false;
+      if (selectedBranch === 'mexico' && !custBranch.includes('mexico')) return false;
+      if (branchObj && cust.branchId !== selectedBranch) return false;
+    }
 
+    // Sales Rep filter
+    if (selectedRep !== 'all') {
+      const repObj = users.find(u => u.id === log.userId);
+      const repName = repObj ? repObj.name.toLowerCase() : '';
+      if (selectedRep === 'ephrem' && !repName.includes('ephrem')) return false;
+      if (selectedRep === 'kidus' && !repName.includes('kidus')) return false;
+      if (selectedRep === 'mekdes' && !repName.includes('mekdes')) return false;
+      if (repObj && log.userId !== selectedRep) return false;
+    }
+
+    // Customer Type toggle
+    if (customerType !== 'All' && cust.customerType !== customerType) return false;
+
+    // Status filter
     const status = (log as any).callStatus || 'Sales';
     if (selectedStatuses.length > 0 && !selectedStatuses.includes(status)) return false;
 
+    // Date Range
     const logDate = new Date(log.dateTime);
     const logDateStr = log.dateTime.split('T')[0];
-    if (dateRange === 'day' && logDateStr !== todayStr) return false;
-    if (dateRange === 'week' && logDate < oneWeekAgo) return false;
-    if (dateRange === 'month' && logDate < oneMonthAgo) return false;
-    if (dateRange === 'year' && logDate < oneYearAgo) return false;
+    if (selectedDateRange === 'today' && logDateStr !== todayStr) return false;
+    if (selectedDateRange === 'yesterday' && logDateStr !== yesterdayStr) return false;
+    if (selectedDateRange === 'this_week' && logDate < oneWeekAgo) return false;
+    if (selectedDateRange === 'last_week' && (logDate < twoWeeksAgo || logDate >= oneWeekAgo)) return false;
+    if (selectedDateRange === 'this_month' && logDate < oneMonthAgo) return false;
 
     if (activeTab === 'my-calls' && log.userId !== currentUser.id) return false;
     if (activeTab === 'unresolved' && cust.nextFollowUpDate && cust.nextFollowUpDate < todayStr) {
@@ -154,23 +176,26 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
   });
 
   const getRollupTitle = () => {
-    if (dateRange === 'day') return 'TODAY AT A GLANCE ROLLUP (ALL 7 STATUSES)';
-    if (dateRange === 'week') return 'THIS WEEK AT A GLANCE ROLLUP (ALL 7 STATUSES)';
+    if (selectedDateRange === 'today') return 'TODAY AT A GLANCE ROLLUP (ALL 7 STATUSES)';
+    if (selectedDateRange === 'this_week') return 'THIS WEEK AT A GLANCE ROLLUP (ALL 7 STATUSES)';
     return 'FILTERED COMMUNICATIONS ROLLUP (ALL 7 STATUSES)';
   };
 
-  const handleSavePreset = (e: React.FormEvent) => {
+  const handleSaveFilter = () => {
+    setShowSaveModal(true);
+  };
+
+  const handleSavePresetSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newPresetName.trim()) return;
     const newPreset: CommPreset = {
       id: 'cp_' + Date.now(),
       name: newPresetName,
       statuses: selectedStatuses,
-      branchId: filterBranchId,
-      userId: filterUserId,
-      customerType: filterCustomerType,
-      leadSource: filterLeadSource,
-      dateRange,
+      branchId: selectedBranch,
+      userId: selectedRep,
+      customerType,
+      dateRange: selectedDateRange,
     };
     setSavedPresets(prev => [...prev, newPreset]);
     setNewPresetName('');
@@ -179,11 +204,10 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
 
   const applyPreset = (preset: CommPreset) => {
     setSelectedStatuses(preset.statuses);
-    setFilterBranchId(preset.branchId);
-    setFilterUserId(preset.userId);
-    setFilterCustomerType(preset.customerType);
-    setFilterLeadSource(preset.leadSource);
-    setDateRange(preset.dateRange);
+    setSelectedBranch(preset.branchId);
+    setSelectedRep(preset.userId);
+    setCustomerType(preset.customerType);
+    setSelectedDateRange(preset.dateRange);
   };
 
   const deletePreset = (id: string, e: React.MouseEvent) => {
@@ -191,7 +215,7 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
     setSavedPresets(prev => prev.filter(p => p.id !== id));
   };
 
-  const handleExportCSV = () => {
+  const exportToCSV = () => {
     const header = "Communication ID,Date & Time,Sales Rep,Customer Name,Company Name,Phone,Branch,Call Status,Purpose,Duration (Mins),Customer Type,Remark\n";
     const rows = filteredLogs.map(log => {
       const cust = customers.find(c => c.id === log.customerId);
@@ -205,14 +229,14 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `TTM_Communications_${dateRange}_${new Date().toISOString().split('T')[0]}.csv`;
+    link.download = `TTM_Communications_${selectedDateRange}_${new Date().toISOString().split('T')[0]}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
-  const handleExportExcel = () => {
-    handleExportCSV(); // XLSX compatible CSV export
+  const exportToExcel = () => {
+    exportToCSV();
   };
 
   const getStatusBadge = (status: string) => {
@@ -230,23 +254,24 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
 
   const cardBg = isDark ? 'bg-[#18181b] border-zinc-800/60' : 'bg-white border-slate-200';
   const rowBg = isDark ? 'bg-zinc-950/40 border-zinc-800/60' : 'bg-slate-50 border-slate-200';
-  const inputBg = isDark ? 'bg-[#1F2937] border-zinc-700 text-zinc-200' : 'bg-slate-50 border-slate-200 text-slate-800';
+  const inputBg = isDark ? 'bg-[#121212] border-neutral-700 text-neutral-200' : 'bg-slate-50 border-slate-200 text-slate-800';
 
   const selectedCustomer = selectedCallLog ? customers.find(c => c.id === selectedCallLog.customerId) : null;
 
   return (
-    <div className="space-y-6 relative">
+    <div className="flex flex-col gap-5 w-full relative">
+      {/* Header */}
       <div className={`p-6 rounded-xl border flex flex-col md:flex-row md:items-center justify-between gap-4 ${cardBg}`}>
         <div>
           <div className="flex items-center gap-2.5">
             <h2 className="text-xl font-bold text-white">Main Communications Feed</h2>
             <span className="flex items-center gap-1.5 text-xs text-emerald-400 font-semibold bg-emerald-950/40 px-2.5 py-1 rounded-full border border-emerald-800/60">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              Live Command Center
+              Live Feed
             </span>
           </div>
           <p className={`text-sm mt-0.5 ${isDark ? 'text-zinc-400' : 'text-slate-500'}`}>
-            Company-wide real-time communications stream with interactive 7-status rollup engine.
+            Company-wide real-time communications stream with full-width top filter bar and date-grouped batches.
           </p>
         </div>
         <button onClick={onOpenLogCall} className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-semibold shadow-sm transition-colors">
@@ -254,14 +279,133 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
         </button>
       </div>
 
-      {/* 1. Interactive 7-Status Rollup Engine (Top Green Box equivalent) */}
+      {/* TOP HORIZONTAL FILTER BAR */}
+      <div className="w-full bg-[#181818] border border-neutral-800 rounded-xl p-4 shadow-sm">
+        {/* Row 1: Search & Dropdowns */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-3 flex-1">
+            {/* Quick Search */}
+            <div className="relative min-w-[220px]">
+              <input
+                type="text"
+                placeholder="Search name, company, phone..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-[#121212] border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-200 placeholder-neutral-500 focus:outline-none focus:border-amber-500"
+              />
+            </div>
+
+            {/* Branch Dropdown */}
+            <select 
+              value={selectedBranch} 
+              onChange={(e) => setSelectedBranch(e.target.value)}
+              className="bg-[#121212] border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-200 focus:outline-none focus:border-amber-500"
+            >
+              <option value="all">All Branches</option>
+              <option value="bole">Bole Printing Showroom</option>
+              <option value="piassa">Piassa Retail Branch</option>
+              <option value="mexico">Mexico Machinery Hub</option>
+            </select>
+
+            {/* Sales Rep Dropdown */}
+            <select 
+              value={selectedRep} 
+              onChange={(e) => setSelectedRep(e.target.value)}
+              className="bg-[#121212] border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-200 focus:outline-none focus:border-amber-500"
+            >
+              <option value="all">All Reps</option>
+              <option value="ephrem">Ephrem Mamo</option>
+              <option value="kidus">Kidus Alemayehu</option>
+              <option value="mekdes">Mekdes Zewdu</option>
+            </select>
+
+            {/* Customer Type Toggle */}
+            <div className="flex bg-[#121212] border border-neutral-700 rounded-lg p-0.5 text-xs">
+              {['All', 'New', 'Old'].map((type) => (
+                <button
+                  key={type}
+                  onClick={() => setCustomerType(type)}
+                  className={`px-3 py-1.5 rounded-md font-medium transition-colors ${
+                    customerType === type 
+                      ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40' 
+                      : 'text-neutral-400 hover:text-neutral-200'
+                  }`}
+                >
+                  {type}
+                </button>
+              ))}
+            </div>
+
+            {/* Date Range Selector */}
+            <select 
+              value={selectedDateRange} 
+              onChange={(e) => setSelectedDateRange(e.target.value)}
+              className="bg-[#121212] border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-200 focus:outline-none focus:border-amber-500"
+            >
+              <option value="today">Today</option>
+              <option value="yesterday">Yesterday</option>
+              <option value="this_week">This Week</option>
+              <option value="last_week">Last Week</option>
+              <option value="this_month">This Month</option>
+            </select>
+          </div>
+
+          {/* Export Actions & Save Preset */}
+          <div className="flex items-center gap-2">
+            {savedPresets.length > 0 && (
+              <select onChange={(e) => { const p = savedPresets.find(x => x.id === e.target.value); if (p) applyPreset(p); }} className="bg-[#121212] border border-neutral-700 rounded-lg px-2.5 py-2 text-xs font-medium text-neutral-300">
+                <option value="">Saved Views ({savedPresets.length})...</option>
+                {savedPresets.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+            )}
+            <button 
+              onClick={handleSaveFilter}
+              className="flex items-center gap-1.5 px-3 py-2 bg-[#222] hover:bg-[#2a2a2a] border border-neutral-700 rounded-lg text-xs font-medium text-neutral-300"
+            >
+              💾 Save View
+            </button>
+            <button 
+              onClick={exportToCSV}
+              className="px-3 py-2 bg-[#222] hover:bg-[#2a2a2a] border border-neutral-700 rounded-lg text-xs font-medium text-neutral-300"
+            >
+              CSV
+            </button>
+            <button 
+              onClick={exportToExcel}
+              className="px-3 py-2 bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-700/50 rounded-lg text-xs font-medium text-emerald-300"
+            >
+              Excel (.xlsx)
+            </button>
+          </div>
+        </div>
+
+        {/* Row 2: Status Checkbox Pills (Quick Toggles) */}
+        <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-neutral-800">
+          <span className="text-xs text-neutral-400 font-medium mr-1">Status:</span>
+          {CALL_STATUSES.map((status) => (
+            <button
+              key={status}
+              onClick={() => toggleStatusFilter(status)}
+              className={`px-2.5 py-1 text-xs rounded-md border transition-colors ${
+                selectedStatuses.includes(status)
+                  ? 'bg-amber-500/15 border-amber-500/40 text-amber-300 font-medium'
+                  : 'bg-[#121212] border-neutral-800 text-neutral-400 hover:text-neutral-200'
+              }`}
+            >
+              {status}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Interactive 7-Status Rollup Engine */}
       <div className={`p-5 rounded-xl border ${cardBg} space-y-3`}>
         <div className="flex items-center justify-between">
           <h3 className="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
             <TrendingUp className="w-4 h-4" />
             <span>{getRollupTitle()}</span>
           </h3>
-          <span className="text-xs font-mono text-zinc-400">{filteredLogs.length} calls • {totalMinutes} total mins</span>
+          <span className="text-xs font-mono text-neutral-400">{filteredLogs.length} calls • {totalMinutes} total mins</span>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
           {CALL_STATUSES.map(status => {
@@ -272,8 +416,8 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
                 onClick={() => toggleStatusFilter(status)}
                 className={`p-3 rounded-lg border text-center cursor-pointer transition-all ${
                   isActive
-                    ? 'bg-amber-600/20 border-amber-500 text-white ring-1 ring-amber-500'
-                    : `${rowBg} hover:border-zinc-700 text-zinc-300`
+                    ? 'bg-amber-500/20 border-amber-500 text-white ring-1 ring-amber-500'
+                    : `${rowBg} hover:border-neutral-700 text-neutral-300`
                 }`}
               >
                 <div className="text-[11px] font-medium truncate">{status}</div>
@@ -282,234 +426,101 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
             );
           })}
           <div className={`p-3 rounded-lg border text-center ${rowBg}`}>
-            <div className="text-[11px] text-zinc-400 truncate">New / Old</div>
+            <div className="text-[11px] text-neutral-400 truncate">New / Old</div>
             <div className="text-sm font-bold text-amber-300 font-mono mt-0.5">{newCustCount} / {oldCustCount}</div>
           </div>
         </div>
       </div>
 
-      {/* Main Layout: Left Red Box (Faceted Feed Filters) + Center Feed */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
-        {/* Left Red Box equivalent: Faceted Feed Filters */}
-        <div className={`p-5 rounded-xl border ${cardBg} space-y-4 lg:col-span-1`}>
-          <div className="flex items-center justify-between pb-3 border-b border-zinc-800/60">
-            <div className="flex items-center gap-2">
-              <Filter className="w-4 h-4 text-amber-400" />
-              <h3 className="font-bold text-white text-sm">Feed Filters</h3>
-            </div>
-            <div className="text-[11px] text-zinc-400 font-mono">
-              {filteredLogs.length} calls • {totalMinutes}m
-            </div>
-          </div>
-
-          {/* Saved Views Dropdown & Save Button */}
-          <div className="space-y-2 pt-1">
-            <div className="flex items-center gap-2">
-              <button onClick={() => setShowSaveModal(true)} className="flex-1 py-2 bg-zinc-800 hover:bg-zinc-700 text-amber-300 border border-zinc-700 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 shadow-sm">
-                <Save className="w-3.5 h-3.5" />
-                <span>Save Current Filter</span>
-              </button>
-            </div>
-            {savedPresets.length > 0 && (
-              <div className="space-y-1">
-                <label className="block text-[10px] font-bold uppercase text-zinc-500">Saved Views / Presets</label>
-                <select onChange={(e) => { const p = savedPresets.find(x => x.id === e.target.value); if (p) applyPreset(p); }} className={`w-full ${inputBg} border rounded-lg px-2.5 py-1.5 text-xs font-medium`}>
-                  <option value="">Select saved view...</option>
-                  {savedPresets.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                </select>
-              </div>
-            )}
-          </div>
-
-          {/* Quick Search */}
-          <div className="space-y-1.5">
-            <label className="block text-xs font-bold uppercase text-zinc-400">Quick Search</label>
-            <div className="relative">
-              <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-2.5 top-2.5" />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Name, company, phone..."
-                className={`w-full ${inputBg} border rounded-lg pl-8 pr-3 py-2 text-xs`}
-              />
-            </div>
-          </div>
-
-          {/* Call Status Checkboxes (All 7) */}
-          <div className="space-y-2">
-            <label className="block text-xs font-bold uppercase text-zinc-400">Call Statuses</label>
-            <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
-              {CALL_STATUSES.map(status => (
-                <label key={status} className="flex items-center gap-2 text-xs text-zinc-300 cursor-pointer hover:text-white">
-                  <input
-                    type="checkbox"
-                    checked={selectedStatuses.includes(status)}
-                    onChange={() => toggleStatusFilter(status)}
-                    className="rounded bg-zinc-900 border-zinc-700 text-amber-600 focus:ring-amber-600"
-                  />
-                  <span>{status}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="block text-xs font-bold uppercase text-zinc-400">Branch Office</label>
-            <select value={filterBranchId} onChange={(e) => setFilterBranchId(e.target.value)} className={`w-full ${inputBg} border rounded-lg px-3 py-2 text-xs font-semibold`}>
-              <option value="all">All Branches</option>
-              {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-            </select>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="block text-xs font-bold uppercase text-zinc-400">Sales Representative</label>
-            <select value={filterUserId} onChange={(e) => setFilterUserId(e.target.value)} className={`w-full ${inputBg} border rounded-lg px-3 py-2 text-xs font-semibold`}>
-              <option value="all">All Reps</option>
-              {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-            </select>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="block text-xs font-bold uppercase text-zinc-400">Customer Type</label>
-            <div className="grid grid-cols-3 gap-1 bg-zinc-900 p-1 rounded-lg text-xs font-semibold">
-              {(['all', 'New', 'Old'] as const).map(t => (
-                <button
-                  key={t}
-                  onClick={() => setFilterCustomerType(t)}
-                  className={`py-1 rounded capitalize transition-colors ${filterCustomerType === t ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:text-zinc-200'}`}
-                >
-                  {t}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="block text-xs font-bold uppercase text-zinc-400">Lead Source</label>
-            <select value={filterLeadSource} onChange={(e) => setFilterLeadSource(e.target.value)} className={`w-full ${inputBg} border rounded-lg px-3 py-2 text-xs font-semibold`}>
-              <option value="all">All Lead Sources</option>
-              <option value="Telegram">Telegram</option>
-              <option value="Facebook">Facebook</option>
-              <option value="Referral">Referral</option>
-              <option value="Previous Buyer">Previous Buyer</option>
-              <option value="Google Sheets Migration">Google Sheets Migration</option>
-            </select>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="block text-xs font-bold uppercase text-zinc-400">Date Range</label>
-            <select value={dateRange} onChange={(e) => setDateRange(e.target.value)} className={`w-full ${inputBg} border rounded-lg px-3 py-2 text-xs font-semibold`}>
-              <option value="day">Today</option>
-              <option value="week">This Week</option>
-              <option value="month">This Month</option>
-              <option value="year">This Year</option>
-              <option value="all">All Time</option>
-            </select>
-          </div>
-
-          {/* Export Action Buttons */}
-          <div className="space-y-2 pt-2 border-t border-zinc-800/60">
-            <button onClick={handleExportCSV} className="w-full py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors">
-              <Download className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Export to CSV</span>
+      {/* Tabs Bar */}
+      <div className="flex items-center justify-between border-b border-zinc-800/60 pb-3">
+        <div className="flex items-center gap-1 bg-zinc-900 p-1 rounded-lg text-xs font-semibold">
+          {(['feed', 'unresolved', 'my-calls'] as const).map(tab => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`px-3 py-1.5 rounded-md capitalize transition-colors ${activeTab === tab ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:text-zinc-200'}`}
+            >
+              {tab === 'my-calls' ? 'My Calls' : tab}
             </button>
-            <button onClick={handleExportExcel} className="w-full py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors">
-              <Download className="w-3.5 h-3.5 text-amber-400" />
-              <span>Export to Excel (.xlsx)</span>
-            </button>
-          </div>
+          ))}
         </div>
+        <span className="text-xs text-zinc-400 font-mono">Showing {filteredLogs.length} communications • {totalMinutes} total mins</span>
+      </div>
 
-        {/* Center Feed Table with Date Grouping */}
-        <div className={`p-5 rounded-xl border ${cardBg} space-y-4 lg:col-span-3`}>
-          <div className="flex items-center justify-between border-b border-zinc-800/60 pb-3">
-            <div className="flex items-center gap-1 bg-zinc-900 p-1 rounded-lg text-xs font-semibold">
-              {(['feed', 'unresolved', 'my-calls'] as const).map(tab => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`px-3 py-1.5 rounded-md capitalize transition-colors ${activeTab === tab ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:text-zinc-200'}`}
-                >
-                  {tab === 'my-calls' ? 'My Calls' : tab}
-                </button>
-              ))}
-            </div>
-            <span className="text-xs text-zinc-400 font-mono">{filteredLogs.length} records</span>
+      {/* Date-Grouped Feeds (Full Width) */}
+      <div className="space-y-6">
+        {filteredLogs.length === 0 ? (
+          <div className={`p-12 text-center rounded-xl border ${cardBg}`}>
+            <p className="text-xs text-zinc-500">No communication logs match the current filters.</p>
           </div>
+        ) : (
+          sortedDates.map(dateStr => {
+            const dayLogs = groupedByDate[dateStr];
+            const dayTotalMins = dayLogs.reduce((s, l) => s + (l.durationMinutes || 0), 0);
+            const isToday = dateStr === todayStr;
+            const formattedDate = new Date(dateStr).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' });
 
-          <div className="space-y-6 max-h-[650px] overflow-y-auto pr-1">
-            {filteredLogs.length === 0 ? (
-              <div className="p-12 text-center text-xs text-zinc-500">No communication logs match the current filters.</div>
-            ) : (
-              sortedDates.map(dateStr => {
-                const dayLogs = groupedByDate[dateStr];
-                const dayTotalMins = dayLogs.reduce((s, l) => s + (l.durationMinutes || 0), 0);
-                const isToday = dateStr === todayStr;
-                const formattedDate = new Date(dateStr).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' });
-
-                return (
-                  <div key={dateStr} className="space-y-2">
-                    {/* Date Section Header */}
-                    <div className="flex items-center justify-between px-3.5 py-2.5 bg-[#1c1c1c] rounded-lg border border-zinc-800/80">
-                      <div className="flex items-center gap-2">
-                        <Calendar className="w-4 h-4 text-amber-400" />
-                        <span className="font-bold text-xs text-zinc-200 uppercase tracking-wider">{formattedDate}</span>
-                        {isToday && (
-                          <span className="px-1.5 py-0.5 text-[10px] bg-emerald-500/10 text-emerald-400 rounded border border-emerald-500/20 font-medium">
-                            TODAY
-                          </span>
-                        )}
-                      </div>
-                      <span className="text-xs text-zinc-400 font-mono">
-                        {dayLogs.length} calls • {dayTotalMins} mins
+            return (
+              <div key={dateStr} className="space-y-2">
+                {/* Date Section Header */}
+                <div className="flex items-center justify-between px-3.5 py-2.5 bg-[#1c1c1c] rounded-lg border border-neutral-800">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-amber-400" />
+                    <span className="font-bold text-xs text-neutral-200 uppercase tracking-wider">{formattedDate}</span>
+                    {isToday && (
+                      <span className="px-1.5 py-0.5 text-[10px] bg-emerald-500/10 text-emerald-400 rounded border border-emerald-500/20 font-medium">
+                        TODAY
                       </span>
-                    </div>
-
-                    <div className="rounded-xl border overflow-hidden bg-zinc-950/40 border-zinc-800/60">
-                      <table className="w-full text-left text-xs">
-                        <thead className="text-[11px] font-bold uppercase text-zinc-400 border-b border-zinc-800/60 bg-zinc-950/80">
-                          <tr>
-                            <th className="py-3 px-3">Salesperson</th>
-                            <th className="py-3 px-3">Customer / Company</th>
-                            <th className="py-3 px-3">Purpose</th>
-                            <th className="py-3 px-3">Duration</th>
-                            <th className="py-3 px-3">Status</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-zinc-800/40">
-                          {dayLogs.map(log => {
-                            const cust = customers.find(c => c.id === log.customerId);
-                            const rep = users.find(u => u.id === log.userId);
-                            const status = (log as any).callStatus || 'Sales';
-                            const isSelected = selectedCallLog?.id === log.id;
-
-                            return (
-                              <tr
-                                key={log.id}
-                                onClick={() => setSelectedCallLog(log)}
-                                className={`cursor-pointer transition-colors hover:bg-zinc-800/40 ${isSelected ? 'bg-amber-950/25 border-l-2 border-amber-500' : ''}`}
-                              >
-                                <td className="py-3 px-3 font-semibold text-zinc-300">{rep?.name || 'Staff'}</td>
-                                <td className="py-3 px-3">
-                                  <div className="font-bold text-white">{cust?.customerName || 'Unknown'}</div>
-                                  <div className="text-[11px] text-zinc-400">{cust?.companyName || 'Independent'}</div>
-                                </td>
-                                <td className="py-3 px-3 text-zinc-300 max-w-[200px] truncate">{log.purpose}</td>
-                                <td className="py-3 px-3 font-mono text-zinc-400">{log.durationMinutes}m</td>
-                                <td className="py-3 px-3">{getStatusBadge(status)}</td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
+                    )}
                   </div>
-                );
-              })
-            )}
-          </div>
-        </div>
+                  <span className="text-xs text-neutral-400 font-mono">
+                    {dayLogs.length} calls • {dayTotalMins} mins
+                  </span>
+                </div>
+
+                <div className="rounded-xl border overflow-hidden bg-zinc-950/40 border-zinc-800/60">
+                  <table className="w-full text-left text-xs">
+                    <thead className="text-[11px] font-bold uppercase text-zinc-400 border-b border-zinc-800/60 bg-zinc-950/80">
+                      <tr>
+                        <th className="py-3 px-4">Salesperson</th>
+                        <th className="py-3 px-4">Customer / Company</th>
+                        <th className="py-3 px-4">Purpose</th>
+                        <th className="py-3 px-4">Duration</th>
+                        <th className="py-3 px-4">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-800/40">
+                      {dayLogs.map(log => {
+                        const cust = customers.find(c => c.id === log.customerId);
+                        const rep = users.find(u => u.id === log.userId);
+                        const status = (log as any).callStatus || 'Sales';
+                        const isSelected = selectedCallLog?.id === log.id;
+
+                        return (
+                          <tr
+                            key={log.id}
+                            onClick={() => setSelectedCallLog(log)}
+                            className={`cursor-pointer transition-colors hover:bg-zinc-800/40 ${isSelected ? 'bg-amber-950/25 border-l-2 border-amber-500' : ''}`}
+                          >
+                            <td className="py-3 px-4 font-semibold text-zinc-300">{rep?.name || 'Staff'}</td>
+                            <td className="py-3 px-4">
+                              <div className="font-bold text-white">{cust?.customerName || 'Unknown'}</div>
+                              <div className="text-[11px] text-zinc-400">{cust?.companyName || 'Independent'}</div>
+                            </td>
+                            <td className="py-3 px-4 text-zinc-300 max-w-[250px] truncate">{log.purpose}</td>
+                            <td className="py-3 px-4 font-mono text-zinc-400">{log.durationMinutes}m</td>
+                            <td className="py-3 px-4">{getStatusBadge(status)}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            );
+          })
+        )}
       </div>
 
       {/* Save Preset Modal */}
@@ -520,7 +531,7 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
               <h3 className="font-bold text-white text-sm">Save Current Filter View</h3>
               <button onClick={() => setShowSaveModal(false)} className="text-zinc-400 hover:text-zinc-200">×</button>
             </div>
-            <form onSubmit={handleSavePreset} className="p-5 space-y-4">
+            <form onSubmit={handleSavePresetSubmit} className="p-5 space-y-4">
               <div>
                 <label className="block text-xs font-bold uppercase text-zinc-400 mb-1">Preset Name</label>
                 <input
