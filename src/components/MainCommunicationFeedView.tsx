@@ -97,7 +97,6 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
     // Branch filter
     if (selectedBranch !== 'all') {
       const branchObj = branches.find(b => b.id === selectedBranch);
-      const branchName = branchObj ? branchObj.name.toLowerCase() : '';
       const custBranch = branches.find(b => b.id === cust.branchId)?.name.toLowerCase() || '';
       if (selectedBranch === 'bole' && !custBranch.includes('bole')) return false;
       if (selectedBranch === 'piassa' && !custBranch.includes('piassa')) return false;
@@ -271,7 +270,7 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
             </span>
           </div>
           <p className={`text-sm mt-0.5 ${isDark ? 'text-zinc-400' : 'text-slate-500'}`}>
-            Company-wide real-time communications stream with full-width top filter bar and date-grouped batches.
+            Company-wide real-time communications stream with sleeker status cards and clean top toolbar alignment.
           </p>
         </div>
         <button onClick={onOpenLogCall} className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-semibold shadow-sm transition-colors">
@@ -279,9 +278,8 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
         </button>
       </div>
 
-      {/* TOP HORIZONTAL FILTER BAR */}
+      {/* TOP HORIZONTAL FILTER BAR (Aligned) */}
       <div className="w-full bg-[#181818] border border-neutral-800 rounded-xl p-4 shadow-sm">
-        {/* Row 1: Search & Dropdowns */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3 flex-1">
             {/* Quick Search */}
@@ -350,7 +348,7 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
             </select>
           </div>
 
-          {/* Export Actions & Save Preset */}
+          {/* Export Actions & Save View Aligned Far Right */}
           <div className="flex items-center gap-2">
             {savedPresets.length > 0 && (
               <select onChange={(e) => { const p = savedPresets.find(x => x.id === e.target.value); if (p) applyPreset(p); }} className="bg-[#121212] border border-neutral-700 rounded-lg px-2.5 py-2 text-xs font-medium text-neutral-300">
@@ -378,28 +376,10 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
             </button>
           </div>
         </div>
-
-        {/* Row 2: Status Checkbox Pills (Quick Toggles) */}
-        <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-neutral-800">
-          <span className="text-xs text-neutral-400 font-medium mr-1">Status:</span>
-          {CALL_STATUSES.map((status) => (
-            <button
-              key={status}
-              onClick={() => toggleStatusFilter(status)}
-              className={`px-2.5 py-1 text-xs rounded-md border transition-colors ${
-                selectedStatuses.includes(status)
-                  ? 'bg-amber-500/15 border-amber-500/40 text-amber-300 font-medium'
-                  : 'bg-[#121212] border-neutral-800 text-neutral-400 hover:text-neutral-200'
-              }`}
-            >
-              {status}
-            </button>
-          ))}
-        </div>
       </div>
 
-      {/* Interactive 7-Status Rollup Engine */}
-      <div className={`p-5 rounded-xl border ${cardBg} space-y-3`}>
+      {/* Sleeker & Smaller 7-Status Rollup Cards Engine */}
+      <div className={`p-4 rounded-xl border ${cardBg} space-y-3`}>
         <div className="flex items-center justify-between">
           <h3 className="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
             <TrendingUp className="w-4 h-4" />
@@ -407,27 +387,31 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
           </h3>
           <span className="text-xs font-mono text-neutral-400">{filteredLogs.length} calls • {totalMinutes} total mins</span>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2.5">
           {CALL_STATUSES.map(status => {
             const isActive = selectedStatuses.includes(status);
             return (
-              <div
+              <button
                 key={status}
                 onClick={() => toggleStatusFilter(status)}
-                className={`p-3 rounded-lg border text-center cursor-pointer transition-all ${
+                className={`flex flex-col items-center justify-center p-2 rounded-lg border transition-all ${
                   isActive
-                    ? 'bg-amber-500/20 border-amber-500 text-white ring-1 ring-amber-500'
-                    : `${rowBg} hover:border-neutral-700 text-neutral-300`
+                    ? 'bg-amber-500/15 border-amber-500 text-amber-300 shadow-sm'
+                    : 'bg-[#181818] border-neutral-800 text-neutral-400 hover:border-neutral-700 hover:text-neutral-200'
                 }`}
               >
-                <div className="text-[11px] font-medium truncate">{status}</div>
-                <div className={`text-lg font-bold font-mono mt-0.5 ${isActive ? 'text-amber-300' : 'text-white'}`}>{statusCounts[status]}</div>
-              </div>
+                <span className="text-[11px] font-medium uppercase tracking-wider text-neutral-400 truncate w-full text-center">
+                  {status}
+                </span>
+                <span className="text-base font-bold text-neutral-100 mt-0.5 font-mono">
+                  {statusCounts[status]}
+                </span>
+              </button>
             );
           })}
-          <div className={`p-3 rounded-lg border text-center ${rowBg}`}>
-            <div className="text-[11px] text-neutral-400 truncate">New / Old</div>
-            <div className="text-sm font-bold text-amber-300 font-mono mt-0.5">{newCustCount} / {oldCustCount}</div>
+          <div className="flex flex-col items-center justify-center p-2 rounded-lg border bg-[#181818] border-neutral-800 text-neutral-300">
+            <span className="text-[11px] font-medium uppercase tracking-wider text-neutral-400 truncate w-full text-center">New / Old</span>
+            <span className="text-sm font-bold text-amber-300 mt-0.5 font-mono">{newCustCount} / {oldCustCount}</span>
           </div>
         </div>
       </div>
