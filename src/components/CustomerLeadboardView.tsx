@@ -89,7 +89,7 @@ export const CustomerLeadboardView: React.FC<CustomerLeadboardViewProps> = ({
         <div>
           <h2 className="text-xl font-bold text-white flex items-center gap-2">
             <Crown className="w-5 h-5 text-amber-400" />
-            <span>Customer Leadboard</span>
+            <span>Customer Leaderboard</span>
           </h2>
           <p className={`text-sm mt-0.5 ${isDark ? 'text-zinc-400' : 'text-slate-500'}`}>
             Ranked automatically by communication activity and sales performance across weekly, monthly, and all-time periods.
@@ -172,7 +172,7 @@ export const CustomerLeadboardView: React.FC<CustomerLeadboardViewProps> = ({
                   <div className="font-mono font-semibold text-xs text-emerald-400">{item.salesRevenue.toLocaleString()} ETB</div>
                 </div>
                 <div className="text-right">
-                  <div className="text-xs text-zinc-400">Leadboard Score</div>
+                  <div className="text-xs text-zinc-400">Leaderboard Score</div>
                   <div className="font-mono font-bold text-base text-amber-400">{item.totalScore.toLocaleString()} pts</div>
                 </div>
                 <button

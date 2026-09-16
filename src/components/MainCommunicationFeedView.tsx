@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Customer, CallLog, Branch, User } from '../types/crm';
-import { PhoneCall, Filter, Search, Calendar, Clock, UserCheck, CheckCircle2, AlertTriangle, ArrowRight } from 'lucide-react';
+import { PhoneCall, Filter, Search, Calendar, Clock, UserCheck, CheckCircle2, AlertTriangle, ArrowRight, X } from 'lucide-react';
 
 interface MainCommunicationFeedViewProps {
   customers: Customer[];
@@ -55,38 +55,26 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
     );
   };
 
-  // Filter call logs
   const filteredLogs = callLogs.filter(log => {
     const cust = customers.find(c => c.id === log.customerId);
     if (!cust) return false;
 
-    // Branch filter
     if (filterBranchId !== 'all' && cust.branchId !== filterBranchId) return false;
-
-    // Sales Rep filter
     if (filterUserId !== 'all' && log.userId !== filterUserId) return false;
-
-    // Customer Type filter
     if (filterCustomerType !== 'all' && cust.customerType !== filterCustomerType) return false;
-
-    // Lead Source filter
     if (filterLeadSource !== 'all' && cust.source !== filterLeadSource) return false;
 
-    // Call Status filter (default to 'Sales' if not explicitly tagged on legacy mock logs)
     const status = (log as any).callStatus || 'Sales';
     if (selectedStatuses.length > 0 && !selectedStatuses.includes(status)) return false;
 
-    // Tabs filter
     if (activeTab === 'my-calls' && log.userId !== currentUser.id) return false;
     if (activeTab === 'unresolved' && cust.nextFollowUpDate && cust.nextFollowUpDate < new Date().toISOString().split('T')[0]) {
-      // Unresolved: no valid upcoming follow-up
       return false;
     }
 
     return true;
   });
 
-  // Today at a Glance rollups across all 7 categories
   const statusCounts: Record<string, number> = {
     Sales: 0,
     Evaluation: 0,
@@ -127,11 +115,9 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
   };
 
   const selectedCustomer = selectedCallLog ? customers.find(c => c.id === selectedCallLog.customerId) : null;
-  const selectedUser = selectedCallLog ? users.find(u => u.id === selectedCallLog.userId) : null;
 
   return (
-    <div className="space-y-6">
-      {/* Header & Rollup */}
+    <div className="space-y-6 relative">
       <div className={`p-6 rounded-xl border flex flex-col md:flex-row md:items-center justify-between gap-4 ${cardBg}`}>
         <div>
           <div className="flex items-center gap-2.5">
@@ -150,7 +136,7 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
         </button>
       </div>
 
-      {/* Today at a Glance Rollup Panel */}
+      {/* Today at a Glance Rollup Panel (All 7 Categories) */}
       <div className={`p-5 rounded-xl border ${cardBg} space-y-3`}>
         <div className="flex items-center justify-between">
           <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400">Today at a Glance Rollup (All 7 Call Statuses)</h3>
@@ -170,7 +156,6 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
         </div>
       </div>
 
-      {/* Main Layout: Left Sidebar Filters + Center Feed + Right Quick Panel */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
         {/* Left Filter Sidebar */}
         <div className={`p-5 rounded-xl border ${cardBg} space-y-4 lg:col-span-1`}>
@@ -179,7 +164,6 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
             <h3 className="font-bold text-white text-sm">Feed Filters</h3>
           </div>
 
-          {/* Call Status Checkboxes (All 7) */}
           <div className="space-y-2">
             <label className="block text-xs font-bold uppercase text-zinc-400">Call Status (All 7)</label>
             <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
@@ -197,7 +181,6 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
             </div>
           </div>
 
-          {/* Branch Dropdown */}
           <div className="space-y-1.5">
             <label className="block text-xs font-bold uppercase text-zinc-400">Branch Office</label>
             <select value={filterBranchId} onChange={(e) => setFilterBranchId(e.target.value)} className={`w-full ${inputBg} border rounded-lg px-3 py-2 text-xs font-semibold`}>
@@ -206,7 +189,6 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
             </select>
           </div>
 
-          {/* Sales Rep Dropdown */}
           <div className="space-y-1.5">
             <label className="block text-xs font-bold uppercase text-zinc-400">Sales Representative</label>
             <select value={filterUserId} onChange={(e) => setFilterUserId(e.target.value)} className={`w-full ${inputBg} border rounded-lg px-3 py-2 text-xs font-semibold`}>
@@ -215,7 +197,6 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
             </select>
           </div>
 
-          {/* Customer Type Toggle */}
           <div className="space-y-1.5">
             <label className="block text-xs font-bold uppercase text-zinc-400">Customer Type</label>
             <div className="grid grid-cols-3 gap-1 bg-zinc-900 p-1 rounded-lg text-xs font-semibold">
@@ -231,7 +212,6 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
             </div>
           </div>
 
-          {/* Lead Source */}
           <div className="space-y-1.5">
             <label className="block text-xs font-bold uppercase text-zinc-400">Lead Source</label>
             <select value={filterLeadSource} onChange={(e) => setFilterLeadSource(e.target.value)} className={`w-full ${inputBg} border rounded-lg px-3 py-2 text-xs font-semibold`}>
@@ -244,7 +224,6 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
             </select>
           </div>
 
-          {/* Date Range (Day/Week/Month/Year/Custom) */}
           <div className="space-y-1.5">
             <label className="block text-xs font-bold uppercase text-zinc-400">Date Range</label>
             <select value={dateRange} onChange={(e) => setDateRange(e.target.value as any)} className={`w-full ${inputBg} border rounded-lg px-3 py-2 text-xs font-semibold`}>
@@ -257,8 +236,8 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
           </div>
         </div>
 
-        {/* Center Feed Table */}
-        <div className={`p-5 rounded-xl border ${cardBg} space-y-4 ${selectedCallLog ? 'lg:col-span-2' : 'lg:col-span-3'}`}>
+        {/* Center Feed Table (Full Width lg:col-span-3) */}
+        <div className={`p-5 rounded-xl border ${cardBg} space-y-4 lg:col-span-3`}>
           <div className="flex items-center justify-between border-b border-zinc-800/60 pb-3">
             <div className="flex items-center gap-1 bg-zinc-900 p-1 rounded-lg text-xs font-semibold">
               {(['feed', 'unresolved', 'my-calls'] as const).map(tab => (
@@ -299,14 +278,14 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
                       <tr
                         key={log.id}
                         onClick={() => setSelectedCallLog(log)}
-                        className={`cursor-pointer transition-colors hover:bg-zinc-900/60 ${isSelected ? 'bg-amber-950/20' : ''}`}
+                        className={`cursor-pointer transition-colors hover:bg-zinc-900/60 ${isSelected ? 'bg-amber-950/25 border-l-2 border-amber-500' : ''}`}
                       >
                         <td className="py-3 px-3 font-semibold text-zinc-300">{rep?.name || 'Staff'}</td>
                         <td className="py-3 px-3">
                           <div className="font-bold text-white">{cust?.customerName || 'Unknown'}</div>
                           <div className="text-[11px] text-zinc-400">{cust?.companyName || 'Independent'}</div>
                         </td>
-                        <td className="py-3 px-3 text-zinc-300 max-w-[180px] truncate">{log.purpose}</td>
+                        <td className="py-3 px-3 text-zinc-300 max-w-[200px] truncate">{log.purpose}</td>
                         <td className="py-3 px-3 font-mono text-zinc-400">{log.durationMinutes}m</td>
                         <td className="py-3 px-3">{getStatusBadge(status)}</td>
                       </tr>
@@ -317,46 +296,53 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
             )}
           </div>
         </div>
+      </div>
 
-        {/* Right Customer Quick-Panel (on row click) */}
-        {selectedCallLog && selectedCustomer && (
-          <div className={`p-5 rounded-xl border ${cardBg} space-y-4 lg:col-span-1 animate-fade-in`}>
-            <div className="flex items-center justify-between pb-3 border-b border-zinc-800/60">
-              <h3 className="font-bold text-white text-sm">Customer Quick-Panel</h3>
-              <button onClick={() => setSelectedCallLog(null)} className="text-zinc-400 hover:text-white">×</button>
+      {/* Absolute / Fixed Slide-Over Drawer for Customer Quick-Panel */}
+      {selectedCallLog && selectedCustomer && (
+        <div className="fixed inset-0 z-50 overflow-hidden bg-zinc-950/60 backdrop-blur-xs flex justify-end">
+          <div className="w-full max-w-md bg-[#161616] border-l border-zinc-800 shadow-2xl p-6 space-y-5 overflow-y-auto animate-slide-in-right">
+            <div className="flex items-center justify-between pb-4 border-b border-zinc-800">
+              <h3 className="font-bold text-white text-base">Customer Quick-Panel</h3>
+              <button onClick={() => setSelectedCallLog(null)} className="text-zinc-400 hover:text-white p-1.5 rounded-lg hover:bg-zinc-800">
+                <X className="w-5 h-5" />
+              </button>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-4">
               <div>
-                <h4 className="font-bold text-base text-white">{selectedCustomer.customerName}</h4>
-                <p className="text-xs text-zinc-400">{selectedCustomer.companyName || 'Print Shop'} • <span className="font-mono text-teal-400">{selectedCustomer.phoneNumber}</span></p>
+                <h4 className="font-bold text-lg text-white">{selectedCustomer.customerName}</h4>
+                <p className="text-xs text-zinc-400">{selectedCustomer.companyName || 'Print Shop'} • <span className="font-mono text-teal-400 font-semibold">{selectedCustomer.phoneNumber}</span></p>
               </div>
 
-              <div className={`p-3 rounded-lg border ${rowBg} space-y-2 text-xs`}>
-                <div className="font-bold text-amber-300">Current Call Summary</div>
-                <div className="flex justify-between"><span className="text-zinc-450 text-zinc-400">Status:</span><span>{getStatusBadge((selectedCallLog as any).callStatus || 'Sales')}</span></div>
+              <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/50 space-y-2.5 text-xs">
+                <div className="font-bold text-amber-300 text-sm">Current Call Summary</div>
+                <div className="flex justify-between"><span className="text-zinc-400">Status:</span><span>{getStatusBadge((selectedCallLog as any).callStatus || 'Sales')}</span></div>
                 <div className="flex justify-between"><span className="text-zinc-400">Purpose:</span><span className="text-zinc-200">{selectedCallLog.purpose}</span></div>
                 <div className="flex justify-between"><span className="text-zinc-400">Duration:</span><span className="font-mono text-zinc-200">{selectedCallLog.durationMinutes} minutes</span></div>
                 <div className="flex justify-between"><span className="text-zinc-400">Lead Source:</span><span className="text-zinc-200">{selectedCustomer.source}</span></div>
               </div>
 
-              <div className="space-y-1">
-                <label className="block text-[11px] font-bold uppercase text-zinc-400">Recent Remark / Note</label>
-                <div className={`p-3 rounded-lg border text-xs text-zinc-300 ${inputBg}`}>
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold uppercase text-zinc-400">Recent Remark / Note</label>
+                <div className="p-3.5 rounded-xl border border-zinc-800 bg-zinc-900 text-xs text-zinc-300 leading-relaxed">
                   {selectedCallLog.remark}
                 </div>
               </div>
 
-              <div className="space-y-2 pt-2 border-t border-zinc-800/60">
-                <button onClick={() => onSelectCustomer(selectedCustomer)} className="w-full py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 shadow-sm">
-                  <span>Open Full Customer Detail</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
+              <div className="space-y-2.5 pt-3 border-t border-zinc-800">
+                <button
+                  onClick={() => { setSelectedCallLog(null); onSelectCustomer(selectedCustomer); }}
+                  className="w-full py-3 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-2 shadow-sm transition-colors"
+                >
+                  <span>Open Full Customer Detail Slide-Over</span>
+                  <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 };

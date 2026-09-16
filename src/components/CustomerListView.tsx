@@ -228,7 +228,7 @@ export const CustomerListView: React.FC<CustomerListViewProps> = ({
               <thead className={`text-xs uppercase tracking-wider font-bold border-b ${isDark ? 'bg-zinc-950/80 text-zinc-400 border-zinc-800' : 'bg-slate-50/80 text-slate-600 border-slate-200'}`}>
                 <tr>
                   <th className="py-3.5 px-4">Client / Print Shop</th>
-                  <th className="py-3.5 px-4">Stage</th>
+                  <th className="py-3.5 px-4">Main Branch & Streak</th>
                   <th className="py-3.5 px-4">Phone & Quick Actions</th>
                   <th className="py-3.5 px-4">Source</th>
                   <th className="py-3.5 px-4">Deal Value</th>
@@ -249,7 +249,22 @@ export const CustomerListView: React.FC<CustomerListViewProps> = ({
                           <div className={`font-semibold ${isDark ? 'text-zinc-100' : 'text-slate-900'}`}>{cust.customerName}</div>
                           <div className={`text-xs ${isDark ? 'text-zinc-400' : 'text-slate-500'}`}>{cust.companyName || 'Independent Print Shop'}</div>
                         </td>
-                        <td className="py-3.5 px-4">{stageBadge(cust.customerStage)}</td>
+                        <td className="py-3.5 px-4">
+                          {(() => {
+                            const b = branches.find(br => br.id === cust.branchId);
+                            const maxStreak = Math.max(0, ...Object.values(cust.consecutivePurchaseStreak || {}));
+                            return (
+                              <div className="space-y-1">
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-950/60 text-amber-300 border border-amber-800/60">
+                                  {b?.name || 'Showroom'}
+                                </span>
+                                <div className="text-[10px] text-zinc-400 font-mono">
+                                  Streak: {maxStreak}/5
+                                </div>
+                              </div>
+                            );
+                          })()}
+                        </td>
                         <td className="py-3.5 px-4">
                           <div className="flex items-center gap-2">
                             <a href={`tel:${cust.phoneNumber}`} onClick={(e) => e.stopPropagation()} className={`font-mono text-xs font-bold px-2 py-1 rounded border flex items-center gap-1 transition-colors ${isDark ? 'bg-teal-950/60 text-teal-300 border-zinc-700 hover:bg-zinc-900' : 'bg-teal-50 text-teal-700 border-teal-200 hover:bg-teal-100'}`} title="Click to Call">

@@ -62,7 +62,7 @@ export const ProductStoreView: React.FC<ProductStoreViewProps> = ({
       <div className={`p-6 rounded-xl border flex flex-col md:flex-row md:items-center justify-between gap-4 ${cardBg}`}>
         <div>
           <h2 className="text-xl font-bold text-white">Product Store & Sales Inventory</h2>
-          <p className={`text-sm mt-0.5 ${subText}`}>Manage software licenses, POS hardware, and services catalog with live stock levels.</p>
+          <p className={`text-sm mt-0.5 ${subText}`}>Manage printing machinery, blanks, and sublimation consumables with live stock levels.</p>
         </div>
         <div className="flex items-center gap-3">
           <button onClick={() => setIsSaleModalOpen(true)} className={`px-4 py-2.5 ${secBtn} rounded-lg text-sm font-medium flex items-center gap-2`}>

@@ -67,11 +67,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         <div className="bg-[#18181b] rounded-xl p-5 border border-zinc-800/80 flex flex-col justify-between">
           <div>
-            <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">WON OPPORTUNITY</p>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">ACTIVE CLIENTS</p>
             <div className="text-3xl font-bold text-white mt-2">{clientsCount}</div>
           </div>
           <div className="text-xs text-zinc-500 mt-4 flex items-center gap-1.5 font-medium">
-            <span>Active clients across all branches</span>
+            <span>Total confirmed sales</span>
           </div>
         </div>
         <div className="bg-[#18181b] rounded-xl p-5 border border-zinc-800/80 flex flex-col justify-between">
@@ -80,7 +80,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <div className="text-3xl font-bold text-white mt-2">{totalRevenue.toLocaleString()} ETB</div>
           </div>
           <div className="text-xs text-emerald-400 mt-4 flex items-center gap-1 font-semibold">
-            <span>↗ Based on current pipeline</span>
+            <span>↗ Total confirmed sales</span>
           </div>
         </div>
         <div className="bg-[#18181b] rounded-xl p-5 border border-zinc-800/80 flex flex-col justify-between">
@@ -112,7 +112,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </thead>
             <tbody className="divide-y divide-zinc-800/60">
               {branchLeaderboard.map((b, i) => (
-                <tr key={b.name} className={`hover:bg-zinc-800/40 transition-colors ${i === 0 ? 'bg-amber-950/20' : ''}`}>
+                <tr key={b.name} className={`hover:bg-zinc-800/40 transition-colors ${i === 0 ? 'bg-amber-500/10 border-y border-amber-500/35' : ''}`}>
                   <td className="py-3 px-4">
                     <span className={`text-xs font-bold ${i === 0 ? 'text-amber-400' : i === 1 ? 'text-zinc-300' : i === 2 ? 'text-orange-400' : 'text-zinc-500'}`}>
                       #{i + 1}
@@ -143,12 +143,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
               <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-900">{totalCallsToday} Today</span>
             </div>
             <div onClick={() => setActiveTab('customers')} className="bg-[#18181b] hover:bg-zinc-800/80 transition-colors border border-zinc-800/80 rounded-lg p-3.5 flex items-center justify-between cursor-pointer">
-              <div className="flex items-center gap-2 text-xs font-medium text-zinc-200"><span>Active Leads</span><ArrowUpRight className="w-3.5 h-3.5 text-zinc-500" /></div>
+              <div className="flex items-center gap-2 text-xs font-medium text-zinc-200"><span>Pending Follow-ups</span><ArrowUpRight className="w-3.5 h-3.5 text-zinc-500" /></div>
               <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-300">{newLeadsCount}</span>
             </div>
-            <div onClick={() => setActiveTab('pipeline')} className="bg-[#18181b] hover:bg-zinc-800/80 transition-colors border border-zinc-800/80 rounded-lg p-3.5 flex items-center justify-between cursor-pointer">
-              <div className="flex items-center gap-2 text-xs font-medium text-zinc-200"><span>Pipeline Board</span><ArrowUpRight className="w-3.5 h-3.5 text-zinc-500" /></div>
-              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-300">Active</span>
+            <div onClick={() => setActiveTab('customer-leadboard')} className="bg-[#18181b] hover:bg-zinc-800/80 transition-colors border border-zinc-800/80 rounded-lg p-3.5 flex items-center justify-between cursor-pointer">
+              <div className="flex items-center gap-2 text-xs font-medium text-zinc-200"><span>Customer Leaderboard</span><ArrowUpRight className="w-3.5 h-3.5 text-zinc-500" /></div>
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-950 text-amber-300 border border-amber-800">Ranked</span>
             </div>
           </div>
         </div>

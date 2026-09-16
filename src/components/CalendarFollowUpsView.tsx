@@ -156,6 +156,16 @@ export const CalendarFollowUpsView: React.FC<CalendarFollowUpsViewProps> = ({
                     <Send className="w-3.5 h-3.5" />
                     <span>WhatsApp</span>
                   </a>
+                  <a
+                    href={`https://t.me/+251${cleanPhone}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3 py-1.5 bg-sky-950/60 hover:bg-sky-900/60 text-sky-300 border border-sky-800/60 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                    title="Open Telegram Chat"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                    <span>Telegram</span>
+                  </a>
                   <button
                     onClick={() => onOpenLogCall(c)}
                     className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 shadow-sm"

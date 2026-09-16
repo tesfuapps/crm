@@ -23,7 +23,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'customers', label: 'Printing Clients', icon: Users },
     { id: 'communications', label: 'Communications Feed', icon: PhoneCall },
-    { id: 'customer-leadboard', label: 'Customer Leadboard', icon: Trophy },
+    { id: 'customer-leadboard', label: 'Customer Leaderboard', icon: Trophy },
     { id: 'calendar', label: 'Calendar & Reminders', icon: Calendar },
     { id: 'leaderboard', label: 'Team Scoreboard', icon: Trophy },
     { id: 'reports', label: 'Reports', icon: BarChart3 },
