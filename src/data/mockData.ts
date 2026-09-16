@@ -58,6 +58,10 @@ export const INITIAL_CUSTOMERS: Customer[] = [
   { id: 'c28', customerName: 'Ato Abinet Worku', companyName: 'Gullele Signage Workshop', phoneNumber: '0911330088', customerType: 'New', source: 'Facebook', purposeOfCall: 'Vinyl Cutting Plotter 720mm', customerStage: 'Lead', assignedUserId: 'u6', branchId: 'b3', mainBranchId: 'b3', leadPriority: 'Hot', dealValue: 38000, createdAt: '2026-09-13T12:00:00Z', updatedAt: '2026-09-13T10:40:00Z', consecutivePurchaseStreak: {}, branchReassignmentLog: [] },
   { id: 'c29', customerName: 'Ato Solomon Chernet', companyName: 'Churchill Road Print Station', phoneNumber: '0912663399', customerType: 'Old', source: 'Walk-in', purposeOfCall: 'Laminating Pouches A4 (100 pack)', customerStage: 'Client', assignedUserId: 'u6', branchId: 'b3', mainBranchId: 'b3', leadPriority: 'Warm', dealValue: 3200, createdAt: '2026-09-13T13:00:00Z', updatedAt: '2026-09-13T16:30:00Z', consecutivePurchaseStreak: {}, branchReassignmentLog: [] },
   { id: 'c30', customerName: 'W/ro Bethlehem Tadesse', companyName: 'Bole Atlas Boutique Gifts', phoneNumber: '0911880022', customerType: 'Old', source: 'Walk-in', purposeOfCall: 'Sublimation Pillow Cover Zipper Issue', customerStage: 'Customer', assignedUserId: 'u3', branchId: 'b1', mainBranchId: 'b1', leadPriority: 'Warm', dealValue: 6000, createdAt: '2026-09-13T14:00:00Z', updatedAt: '2026-09-13T12:15:00Z', consecutivePurchaseStreak: {}, branchReassignmentLog: [] },
+  // Additional 10+ customers for Sep 12
+  { id: 'c31', customerName: 'Ato Getachew Assefa', companyName: 'Mexico Square Rubber Stamp Hub', phoneNumber: '0913770022', customerType: 'Old', source: 'Telegram', purposeOfCall: 'Photosensitive Stamp Foam Sheets (Pack of 10)', customerStage: 'Client', assignedUserId: 'u5', branchId: 'b2', mainBranchId: 'b2', leadPriority: 'Hot', dealValue: 14000, createdAt: '2026-09-12T09:00:00Z', updatedAt: '2026-09-12T11:10:00Z', consecutivePurchaseStreak: {}, branchReassignmentLog: [] },
+  { id: 'c32', customerName: 'W/ro Senait Moges', companyName: 'Shola Market T-Shirt Express', phoneNumber: '0924119933', customerType: 'Old', source: 'Telegram', purposeOfCall: 'Yellow Sublimation T-Shirts (20 pcs)', customerStage: 'Customer', assignedUserId: 'u3', branchId: 'b1', mainBranchId: 'b1', leadPriority: 'Warm', dealValue: 9500, createdAt: '2026-09-12T10:00:00Z', updatedAt: '2026-09-12T14:40:00Z', consecutivePurchaseStreak: {}, branchReassignmentLog: [] },
+  { id: 'c33', customerName: 'Ato Fisseha Mulugeta', companyName: 'Autobus Tera Print Corner', phoneNumber: '0911443311', customerType: 'New', source: 'Walk-in', purposeOfCall: 'Cup Heat Press vs 3D Vacuum Sublimation', customerStage: 'Lead', assignedUserId: 'u6', branchId: 'b3', mainBranchId: 'b3', leadPriority: 'Warm', dealValue: 22000, createdAt: '2026-09-12T11:00:00Z', updatedAt: '2026-09-12T16:00:00Z', consecutivePurchaseStreak: {}, branchReassignmentLog: [] },
 ];
 
 export const INITIAL_CALL_LOGS: CallLog[] = [
@@ -82,7 +86,7 @@ export const INITIAL_CALL_LOGS: CallLog[] = [
   { id: 'cl_50_16', customerId: 'c16', userId: 'u5', dateTime: '2026-09-15T16:50:00Z', durationMinutes: 25, purpose: '4-Color 1-Station Screen Press', remark: 'Deposited 30% advance for screen printing press arriving in 10 days.', callStatus: 'Pre-order' },
   { id: 'cl_50_17', customerId: 'c17', userId: 'u6', dateTime: '2026-09-15T09:20:00Z', durationMinutes: 11, purpose: 'Damaged Packaging on Sublimation Paper', remark: 'Corner of 100-sheet sublimation paper pack was bent during dispatch. Replaced pack.', callStatus: 'Complaint' },
 
-  // 2 DAYS AGO (Sep 14, 2026)
+  // SEP 14, 2026 (7 records)
   { id: 'cl_50_18', customerId: 'c18', userId: 'u3', dateTime: '2026-09-14T14:00:00Z', durationMinutes: 10, purpose: 'Dark Transfer Paper Pack (A4 50 sheets)', remark: 'Standard transfer paper reorder for dark cotton shirts.', callStatus: 'Sales' },
   { id: 'cl_50_19', customerId: 'c19', userId: 'u3', dateTime: '2026-09-14T11:30:00Z', durationMinutes: 15, purpose: 'Sublimation Magic Mugs vs Normal White', remark: 'Explained color change mechanism when hot water is poured. Provided sample unit.', callStatus: 'Evaluation' },
   { id: 'cl_50_20', customerId: 'c20', userId: 'u3', dateTime: '2026-09-14T15:45:00Z', durationMinutes: 18, purpose: 'Pre-inked Doctor Stamps (3 units)', remark: 'Ordered 3 signature and stamp mounts for new outpatient doctors.', callStatus: 'Sales' },
@@ -91,13 +95,22 @@ export const INITIAL_CALL_LOGS: CallLog[] = [
   { id: 'cl_50_23', customerId: 'c23', userId: 'u6', dateTime: '2026-09-14T13:40:00Z', durationMinutes: 22, purpose: 'Cap Heat Press Curved Pad Replacement', remark: 'Replaced silicone heating pad on cap press and tested with test transfer.', callStatus: 'Service' },
   { id: 'cl_50_24', customerId: 'c24', userId: 'u3', dateTime: '2026-09-14T09:50:00Z', durationMinutes: 13, purpose: 'Sublimation Rock Slate Printing Heat Time', remark: 'Advised 195°C for 450 seconds with face-down transfer method.', callStatus: 'Evaluation' },
 
-  // 3 DAYS AGO (Sep 13, 2026)
+  // SEP 13, 2026 (6 records)
   { id: 'cl_50_25', customerId: 'c25', userId: 'u5', dateTime: '2026-09-13T14:20:00Z', durationMinutes: 16, purpose: 'Number Heat Transfer Vinyl (10m Roll)', remark: 'PU vinyl in white and gold for football jersey numbering.', callStatus: 'Sales' },
   { id: 'cl_50_26', customerId: 'c26', userId: 'u5', dateTime: '2026-09-13T11:00:00Z', durationMinutes: 12, purpose: 'Name Tag Pin Backing Plates (100 pcs)', remark: 'Magnetic and pin badge accessories for company staff IDs.', callStatus: 'Sales' },
   { id: 'cl_50_27', customerId: 'c27', userId: 'u3', dateTime: '2026-09-13T15:10:00Z', durationMinutes: 4, purpose: 'Canvas Stretching Pliers', remark: 'Requested canvas stretching tools. Referred to local hardware suppliers.', callStatus: 'Out of List' },
   { id: 'cl_50_28', customerId: 'c28', userId: 'u6', dateTime: '2026-09-13T10:40:00Z', durationMinutes: 28, purpose: 'Vinyl Cutting Plotter 720mm', remark: 'Advance booking for camera contour cutting plotter with software license.', callStatus: 'Pre-order' },
   { id: 'cl_50_29', customerId: 'c29', userId: 'u6', dateTime: '2026-09-13T16:30:00Z', durationMinutes: 8, purpose: 'Laminating Pouches A4 (100 pack)', remark: 'Purchased 2 packs of 125-micron thermal laminating sheets.', callStatus: 'Sales' },
   { id: 'cl_50_30', customerId: 'c30', userId: 'u3', dateTime: '2026-09-13T12:15:00Z', durationMinutes: 17, purpose: 'Sublimation Pillow Cover Zipper Issue', remark: 'One sequin cushion cover zipper came off. Replaced with fresh inventory immediately.', callStatus: 'Complaint' },
+
+  // SEP 12, 2026 (7 robust records to ensure 20+ datas across Sep 12, 13, 14)
+  { id: 'cl_50_31', customerId: 'c31', userId: 'u5', dateTime: '2026-09-12T09:10:00Z', durationMinutes: 14, purpose: 'Photosensitive Stamp Foam Sheets (Pack of 10)', remark: 'High-density 7mm stamp foam reorder.', callStatus: 'Sales' },
+  { id: 'cl_50_32', customerId: 'c32', userId: 'u3', dateTime: '2026-09-12T10:40:00Z', durationMinutes: 19, purpose: 'Yellow Sublimation T-Shirts (20 pcs)', remark: 'Custom sports day t-shirt supply.', callStatus: 'Sales' },
+  { id: 'cl_50_33', customerId: 'c33', userId: 'u6', dateTime: '2026-09-12T16:00:00Z', durationMinutes: 21, purpose: 'Cup Heat Press vs 3D Vacuum Sublimation', remark: 'Comparing batch output for mugs and phone cases.', callStatus: 'Evaluation' },
+  { id: 'cl_50_34', customerId: 'c1', userId: 'u3', dateTime: '2026-09-12T11:20:00Z', durationMinutes: 12, purpose: 'Bulk Mug Pricing Inquiry', remark: 'Inquired about box discounts for white ceramic mugs.', callStatus: 'Evaluation' },
+  { id: 'cl_50_35', customerId: 'c3', userId: 'u5', dateTime: '2026-09-12T13:30:00Z', durationMinutes: 15, purpose: 'Stamp Mount Defective Spring', remark: 'Replaced spring on self-inking stamp mount under warranty.', callStatus: 'Service' },
+  { id: 'cl_50_36', customerId: 'c5', userId: 'u6', dateTime: '2026-09-12T15:00:00Z', durationMinutes: 10, purpose: 'Sublimation Paper A4 Out of Stock', remark: 'A4 paper out of stock until next delivery. Offered A3 as alternative.', callStatus: 'Out of Stock' },
+  { id: 'cl_50_37', customerId: 'c6', userId: 'u6', dateTime: '2026-09-12T16:45:00Z', durationMinutes: 8, purpose: 'Custom Acrylic Sheet Cutting', remark: 'Requested laser cutting for 3mm acrylic sheets. Referred to partner workshop.', callStatus: 'Out of List' },
 ];
 
 export const INITIAL_SALES: ProductSale[] = [
