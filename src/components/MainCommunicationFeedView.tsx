@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Customer, CallLog, Branch, User } from '../types/crm';
-import { PhoneCall, Filter, Search, Calendar, Clock, UserCheck, CheckCircle2, AlertTriangle, ArrowRight, X } from 'lucide-react';
+import { PhoneCall, Filter, Search, Calendar, Clock, UserCheck, CheckCircle2, AlertTriangle, ArrowRight, X, Bookmark, Download, Save, Trash2 } from 'lucide-react';
 
 interface MainCommunicationFeedViewProps {
   customers: Customer[];
@@ -24,6 +24,17 @@ const CALL_STATUSES = [
   'Complaint',
 ] as const;
 
+interface CommPreset {
+  id: string;
+  name: string;
+  statuses: string[];
+  branchId: string;
+  userId: string;
+  customerType: string;
+  leadSource: string;
+  dateRange: string;
+}
+
 export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps> = ({
   customers,
   callLogs,
@@ -36,18 +47,27 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
   onOpenLogCall,
 }) => {
   const isDark = theme === 'dark';
+  const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
   const [filterBranchId, setFilterBranchId] = useState<string>(selectedBranchId);
   const [filterUserId, setFilterUserId] = useState<string>('all');
-  const [filterCustomerType, setFilterCustomerType] = useState<'all' | 'New' | 'Old'>('all');
+  const [filterCustomerType, setFilterCustomerType] = useState<string>('all');
   const [filterLeadSource, setFilterLeadSource] = useState<string>('all');
-  const [dateRange, setDateRange] = useState<'day' | 'week' | 'month' | 'year' | 'custom'>('week');
+  const [dateRange, setDateRange] = useState<string>('week');
   const [activeTab, setActiveTab] = useState<'feed' | 'unresolved' | 'my-calls'>('feed');
   const [selectedCallLog, setSelectedCallLog] = useState<CallLog | null>(null);
 
-  const cardBg = isDark ? 'bg-[#18181b] border-zinc-800/60' : 'bg-white border-slate-200';
-  const rowBg = isDark ? 'bg-zinc-950/40 border-zinc-800/60' : 'bg-slate-50 border-slate-200';
-  const inputBg = isDark ? 'bg-[#1F2937] border-zinc-700 text-zinc-200' : 'bg-slate-50 border-slate-200 text-slate-800';
+  // Saved Presets state
+  const [savedPresets, setSavedPresets] = useState<CommPreset[]>(() => {
+    const saved = localStorage.getItem('ttm_crm_comm_presets');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [newPresetName, setNewPresetName] = useState('');
+
+  useEffect(() => {
+    localStorage.setItem('ttm_crm_comm_presets', JSON.stringify(savedPresets));
+  }, [savedPresets]);
 
   const toggleStatusFilter = (status: string) => {
     setSelectedStatuses(prev =>
@@ -55,9 +75,25 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
     );
   };
 
+  const now = new Date();
+  const todayStr = now.toISOString().split('T')[0];
+  const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const oneYearAgo = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+
   const filteredLogs = callLogs.filter(log => {
     const cust = customers.find(c => c.id === log.customerId);
     if (!cust) return false;
+
+    // Search term
+    if (searchTerm.trim()) {
+      const q = searchTerm.toLowerCase();
+      const matchName = cust.customerName.toLowerCase().includes(q);
+      const matchComp = cust.companyName && cust.companyName.toLowerCase().includes(q);
+      const matchPhone = cust.phoneNumber.includes(q);
+      const matchPurpose = log.purpose.toLowerCase().includes(q);
+      if (!matchName && !matchComp && !matchPhone && !matchPurpose) return false;
+    }
 
     if (filterBranchId !== 'all' && cust.branchId !== filterBranchId) return false;
     if (filterUserId !== 'all' && log.userId !== filterUserId) return false;
@@ -67,39 +103,85 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
     const status = (log as any).callStatus || 'Sales';
     if (selectedStatuses.length > 0 && !selectedStatuses.includes(status)) return false;
 
+    // Date range filter
+    const logDate = new Date(log.dateTime);
+    const logDateStr = log.dateTime.split('T')[0];
+    if (dateRange === 'day' && logDateStr !== todayStr) return false;
+    if (dateRange === 'week' && logDate < oneWeekAgo) return false;
+    if (dateRange === 'month' && logDate < oneMonthAgo) return false;
+    if (dateRange === 'year' && logDate < oneYearAgo) return false;
+
     if (activeTab === 'my-calls' && log.userId !== currentUser.id) return false;
-    if (activeTab === 'unresolved' && cust.nextFollowUpDate && cust.nextFollowUpDate < new Date().toISOString().split('T')[0]) {
+    if (activeTab === 'unresolved' && cust.nextFollowUpDate && cust.nextFollowUpDate < todayStr) {
       return false;
     }
 
     return true;
   });
 
-  const statusCounts: Record<string, number> = {
-    Sales: 0,
-    Evaluation: 0,
-    Service: 0,
-    'Out of List': 0,
-    'Out of Stock': 0,
-    'Pre-order': 0,
-    Complaint: 0,
-  };
-  let totalMinutes = 0;
-  let newCustCount = 0;
-  let oldCustCount = 0;
-
+  // Group logs by date
+  const groupedByDate: Record<string, CallLog[]> = {};
   filteredLogs.forEach(log => {
-    const status = (log as any).callStatus || 'Sales';
-    if (statusCounts[status] !== undefined) statusCounts[status]++;
-    else statusCounts['Sales']++;
-
-    totalMinutes += log.durationMinutes || 0;
-    const cust = customers.find(c => c.id === log.customerId);
-    if (cust) {
-      if (cust.customerType === 'New') newCustCount++;
-      else oldCustCount++;
-    }
+    const dateKey = log.dateTime.split('T')[0];
+    if (!groupedByDate[dateKey]) groupedByDate[dateKey] = [];
+    groupedByDate[dateKey].push(log);
   });
+
+  const sortedDates = Object.keys(groupedByDate).sort((a, b) => b.localeCompare(a));
+
+  const totalMinutes = filteredLogs.reduce((sum, cl) => sum + (cl.durationMinutes || 0), 0);
+
+  const handleSavePreset = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPresetName.trim()) return;
+    const newPreset: CommPreset = {
+      id: 'cp_' + Date.now(),
+      name: newPresetName,
+      statuses: selectedStatuses,
+      branchId: filterBranchId,
+      userId: filterUserId,
+      customerType: filterCustomerType,
+      leadSource: filterLeadSource,
+      dateRange,
+    };
+    setSavedPresets(prev => [...prev, newPreset]);
+    setNewPresetName('');
+    setShowSaveModal(false);
+  };
+
+  const applyPreset = (preset: CommPreset) => {
+    setSelectedStatuses(preset.statuses);
+    setFilterBranchId(preset.branchId);
+    setFilterUserId(preset.userId);
+    setFilterCustomerType(preset.customerType);
+    setFilterLeadSource(preset.leadSource);
+    setDateRange(preset.dateRange);
+  };
+
+  const deletePreset = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSavedPresets(prev => prev.filter(p => p.id !== id));
+  };
+
+  const handleExportCSV = () => {
+    const header = "Communication ID,Date & Time,Sales Rep,Customer Name,Company Name,Phone,Branch,Call Status,Purpose,Duration (Mins),Customer Type,Remark\n";
+    const rows = filteredLogs.map(log => {
+      const cust = customers.find(c => c.id === log.customerId);
+      const rep = users.find(u => u.id === log.userId);
+      const branch = branches.find(b => b.id === cust?.branchId);
+      const status = (log as any).callStatus || 'Sales';
+      return `"${log.id}","${log.dateTime}","${rep?.name || 'Staff'}","${cust?.customerName || ''}","${cust?.companyName || ''}","${cust?.phoneNumber || ''}","${branch?.name || ''}","${status}","${log.purpose}",${log.durationMinutes},"${cust?.customerType || 'New'}","${log.remark.replace(/"/g, '""')}"`;
+    }).join("\n");
+
+    const blob = new Blob([header + rows], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `TTM_Communications_${dateRange}_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const getStatusBadge = (status: string) => {
     const colors: Record<string, string> = {
@@ -114,6 +196,10 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
     return <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold border ${colors[status] || colors.Sales}`}>{status}</span>;
   };
 
+  const cardBg = isDark ? 'bg-[#18181b] border-zinc-800/60' : 'bg-white border-slate-200';
+  const rowBg = isDark ? 'bg-zinc-950/40 border-zinc-800/60' : 'bg-slate-50 border-slate-200';
+  const inputBg = isDark ? 'bg-[#1F2937] border-zinc-700 text-zinc-200' : 'bg-slate-50 border-slate-200 text-slate-800';
+
   const selectedCustomer = selectedCallLog ? customers.find(c => c.id === selectedCallLog.customerId) : null;
 
   return (
@@ -121,184 +207,208 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
       <div className={`p-6 rounded-xl border flex flex-col md:flex-row md:items-center justify-between gap-4 ${cardBg}`}>
         <div>
           <div className="flex items-center gap-2.5">
-            <h2 className="text-xl font-bold text-white">Main Communication Feed</h2>
+            <h2 className="text-xl font-bold text-white">Main Communications Feed</h2>
             <span className="flex items-center gap-1.5 text-xs text-emerald-400 font-semibold bg-emerald-950/40 px-2.5 py-1 rounded-full border border-emerald-800/60">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
               Live Feed
             </span>
           </div>
           <p className={`text-sm mt-0.5 ${isDark ? 'text-zinc-400' : 'text-slate-500'}`}>
-            Company-wide real-time communications stream with auto-calculated daily status rollups.
+            Showing <strong className="text-white">{filteredLogs.length}</strong> communications • <strong className="text-amber-400">{totalMinutes}</strong> total minutes.
           </p>
         </div>
-        <button onClick={onOpenLogCall} className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-semibold shadow-sm transition-colors">
-          + Log New Communication
-        </button>
+        <div className="flex items-center gap-2.5">
+          <button onClick={handleExportCSV} className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-sm">
+            <Download className="w-4 h-4 text-emerald-400" />
+            <span>Export CSV</span>
+          </button>
+          <button onClick={onOpenLogCall} className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-semibold shadow-sm transition-colors">
+            + Log New Communication
+          </button>
+        </div>
       </div>
 
-      {/* Today at a Glance Rollup Panel (All 7 Categories) */}
-      <div className={`p-5 rounded-xl border ${cardBg} space-y-3`}>
-        <div className="flex items-center justify-between">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400">Today at a Glance Rollup (All 7 Call Statuses)</h3>
-          <span className="text-xs font-mono text-zinc-400">{filteredLogs.length} communications • {totalMinutes} total minutes</span>
+      {/* Task 1: Top Compact Filter Toolbar */}
+      <div className={`p-4 rounded-xl border ${cardBg} space-y-3`}>
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Search Input */}
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="w-4 h-4 text-zinc-400 absolute left-3 top-2.5" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search customer, company, phone..."
+              className={`w-full ${inputBg} border rounded-lg pl-9 pr-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-amber-600`}
+            />
+          </div>
+
+          {/* Branch Dropdown */}
+          <select value={filterBranchId} onChange={(e) => setFilterBranchId(e.target.value)} className={`${inputBg} border rounded-lg px-3 py-2 text-xs font-semibold`}>
+            <option value="all">All Branches</option>
+            {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+          </select>
+
+          {/* Rep Dropdown */}
+          <select value={filterUserId} onChange={(e) => setFilterUserId(e.target.value)} className={`${inputBg} border rounded-lg px-3 py-2 text-xs font-semibold`}>
+            <option value="all">All Reps</option>
+            {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+          </select>
+
+          {/* Date Range */}
+          <select value={dateRange} onChange={(e) => setDateRange(e.target.value)} className={`${inputBg} border rounded-lg px-3 py-2 text-xs font-semibold`}>
+            <option value="day">Today</option>
+            <option value="week">This Week</option>
+            <option value="month">This Month</option>
+            <option value="year">This Year</option>
+            <option value="all">All Time</option>
+          </select>
+
+          {/* Save Filter Button */}
+          <button onClick={() => setShowSaveModal(true)} className="px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 rounded-lg text-xs font-semibold flex items-center gap-1">
+            <Save className="w-3.5 h-3.5 text-amber-400" />
+            <span>Save Filter</span>
+          </button>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
-          {CALL_STATUSES.map(status => (
-            <div key={status} className={`p-3 rounded-lg border text-center ${rowBg}`}>
-              <div className="text-[11px] text-zinc-400 truncate">{status}</div>
-              <div className="text-lg font-bold text-white font-mono mt-0.5">{statusCounts[status]}</div>
-            </div>
+
+        {/* Saved Presets Bar */}
+        {savedPresets.length > 0 && (
+          <div className="flex items-center gap-2 pt-2 border-t border-zinc-800/60 overflow-x-auto pb-1">
+            <span className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-1">
+              <Bookmark className="w-3 h-3 text-amber-400" /> Saved Presets:
+            </span>
+            {savedPresets.map(preset => (
+              <div key={preset.id} className="inline-flex items-center gap-1.5 bg-zinc-900 border border-zinc-800 px-2.5 py-1 rounded-lg text-xs text-zinc-200">
+                <button onClick={() => applyPreset(preset)} className="hover:text-amber-400 font-medium">{preset.name}</button>
+                <button onClick={(e) => deletePreset(preset.id, e)} className="text-zinc-500 hover:text-red-400">×</button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Tabs Bar */}
+      <div className="flex items-center justify-between border-b border-zinc-800/60 pb-3">
+        <div className="flex items-center gap-1 bg-zinc-900 p-1 rounded-lg text-xs font-semibold">
+          {(['feed', 'unresolved', 'my-calls'] as const).map(tab => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`px-3 py-1.5 rounded-md capitalize transition-colors ${activeTab === tab ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:text-zinc-200'}`}
+            >
+              {tab === 'my-calls' ? 'My Calls' : tab}
+            </button>
           ))}
-          <div className={`p-3 rounded-lg border text-center ${rowBg}`}>
-            <div className="text-[11px] text-zinc-400 truncate">New / Old</div>
-            <div className="text-sm font-bold text-amber-300 font-mono mt-0.5">{newCustCount} / {oldCustCount}</div>
-          </div>
         </div>
+        <span className="text-xs text-zinc-400 font-mono">Showing {filteredLogs.length} communications • {totalMinutes} total mins</span>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
-        {/* Left Filter Sidebar */}
-        <div className={`p-5 rounded-xl border ${cardBg} space-y-4 lg:col-span-1`}>
-          <div className="flex items-center gap-2 pb-3 border-b border-zinc-800/60">
-            <Filter className="w-4 h-4 text-amber-400" />
-            <h3 className="font-bold text-white text-sm">Feed Filters</h3>
+      {/* Task 2: Date-Grouped Feeds */}
+      <div className="space-y-6">
+        {filteredLogs.length === 0 ? (
+          <div className={`p-12 text-center rounded-xl border ${cardBg}`}>
+            <p className="text-xs text-zinc-500">No communication logs match the current filters.</p>
           </div>
+        ) : (
+          sortedDates.map(dateStr => {
+            const dayLogs = groupedByDate[dateStr];
+            const dayTotalMins = dayLogs.reduce((s, l) => s + (l.durationMinutes || 0), 0);
+            const isToday = dateStr === todayStr;
+            const formattedDate = new Date(dateStr).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
-          <div className="space-y-2">
-            <label className="block text-xs font-bold uppercase text-zinc-400">Call Status (All 7)</label>
-            <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
-              {CALL_STATUSES.map(status => (
-                <label key={status} className="flex items-center gap-2 text-xs text-zinc-300 cursor-pointer hover:text-white">
-                  <input
-                    type="checkbox"
-                    checked={selectedStatuses.includes(status)}
-                    onChange={() => toggleStatusFilter(status)}
-                    className="rounded bg-zinc-900 border-zinc-700 text-amber-600 focus:ring-amber-600"
-                  />
-                  <span>{status}</span>
-                </label>
-              ))}
-            </div>
-          </div>
+            return (
+              <div key={dateStr} className="space-y-2">
+                {/* Date Divider Header */}
+                <div className="flex items-center justify-between px-4 py-2.5 bg-[#1a1a1a] rounded-xl border border-zinc-800/80">
+                  <div className="flex items-center gap-2.5">
+                    <Calendar className="w-4 h-4 text-amber-400" />
+                    <span className="font-bold text-xs text-zinc-200">{formattedDate}</span>
+                    {isToday && (
+                      <span className="px-2 py-0.5 text-[10px] bg-emerald-500/10 text-emerald-400 rounded-full border border-emerald-500/20 font-semibold">
+                        Today
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-xs text-zinc-400 font-mono">
+                    {dayLogs.length} calls • {dayTotalMins} mins
+                  </span>
+                </div>
 
-          <div className="space-y-1.5">
-            <label className="block text-xs font-bold uppercase text-zinc-400">Branch Office</label>
-            <select value={filterBranchId} onChange={(e) => setFilterBranchId(e.target.value)} className={`w-full ${inputBg} border rounded-lg px-3 py-2 text-xs font-semibold`}>
-              <option value="all">All Branches</option>
-              {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-            </select>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="block text-xs font-bold uppercase text-zinc-400">Sales Representative</label>
-            <select value={filterUserId} onChange={(e) => setFilterUserId(e.target.value)} className={`w-full ${inputBg} border rounded-lg px-3 py-2 text-xs font-semibold`}>
-              <option value="all">All Sales Reps</option>
-              {users.map(u => <option key={u.id} value={u.id}>{u.name} ({u.role})</option>)}
-            </select>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="block text-xs font-bold uppercase text-zinc-400">Customer Type</label>
-            <div className="grid grid-cols-3 gap-1 bg-zinc-900 p-1 rounded-lg text-xs font-semibold">
-              {(['all', 'New', 'Old'] as const).map(t => (
-                <button
-                  key={t}
-                  onClick={() => setFilterCustomerType(t)}
-                  className={`py-1 rounded capitalize transition-colors ${filterCustomerType === t ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:text-zinc-200'}`}
-                >
-                  {t}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="block text-xs font-bold uppercase text-zinc-400">Lead Source</label>
-            <select value={filterLeadSource} onChange={(e) => setFilterLeadSource(e.target.value)} className={`w-full ${inputBg} border rounded-lg px-3 py-2 text-xs font-semibold`}>
-              <option value="all">All Lead Sources</option>
-              <option value="Telegram">Telegram</option>
-              <option value="Facebook">Facebook</option>
-              <option value="Referral">Referral</option>
-              <option value="Previous Buyer">Previous Buyer</option>
-              <option value="Google Sheets Migration">Google Sheets Migration</option>
-            </select>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="block text-xs font-bold uppercase text-zinc-400">Date Range</label>
-            <select value={dateRange} onChange={(e) => setDateRange(e.target.value as any)} className={`w-full ${inputBg} border rounded-lg px-3 py-2 text-xs font-semibold`}>
-              <option value="day">Today</option>
-              <option value="week">This Week</option>
-              <option value="month">This Month</option>
-              <option value="year">This Year (Annual)</option>
-              <option value="custom">Custom Range</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Center Feed Table (Full Width lg:col-span-3) */}
-        <div className={`p-5 rounded-xl border ${cardBg} space-y-4 lg:col-span-3`}>
-          <div className="flex items-center justify-between border-b border-zinc-800/60 pb-3">
-            <div className="flex items-center gap-1 bg-zinc-900 p-1 rounded-lg text-xs font-semibold">
-              {(['feed', 'unresolved', 'my-calls'] as const).map(tab => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`px-3 py-1.5 rounded-md capitalize transition-colors ${activeTab === tab ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:text-zinc-200'}`}
-                >
-                  {tab === 'my-calls' ? 'My Calls' : tab}
-                </button>
-              ))}
-            </div>
-            <span className="text-xs text-zinc-400 font-mono">{filteredLogs.length} records</span>
-          </div>
-
-          <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
-            {filteredLogs.length === 0 ? (
-              <div className="p-12 text-center text-xs text-zinc-500">No communication logs match the current filters.</div>
-            ) : (
-              <table className="w-full text-left text-xs">
-                <thead className="text-[11px] font-bold uppercase text-zinc-400 border-b border-zinc-800/60 sticky top-0 bg-[#18181b]">
-                  <tr>
-                    <th className="pb-3 px-3">Salesperson</th>
-                    <th className="pb-3 px-3">Customer / Company</th>
-                    <th className="pb-3 px-3">Purpose</th>
-                    <th className="pb-3 px-3">Duration</th>
-                    <th className="pb-3 px-3">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-zinc-800/40">
-                  {filteredLogs.map(log => {
-                    const cust = customers.find(c => c.id === log.customerId);
-                    const rep = users.find(u => u.id === log.userId);
-                    const status = (log as any).callStatus || 'Sales';
-                    const isSelected = selectedCallLog?.id === log.id;
-
-                    return (
-                      <tr
-                        key={log.id}
-                        onClick={() => setSelectedCallLog(log)}
-                        className={`cursor-pointer transition-colors hover:bg-zinc-900/60 ${isSelected ? 'bg-amber-950/25 border-l-2 border-amber-500' : ''}`}
-                      >
-                        <td className="py-3 px-3 font-semibold text-zinc-300">{rep?.name || 'Staff'}</td>
-                        <td className="py-3 px-3">
-                          <div className="font-bold text-white">{cust?.customerName || 'Unknown'}</div>
-                          <div className="text-[11px] text-zinc-400">{cust?.companyName || 'Independent'}</div>
-                        </td>
-                        <td className="py-3 px-3 text-zinc-300 max-w-[200px] truncate">{log.purpose}</td>
-                        <td className="py-3 px-3 font-mono text-zinc-400">{log.durationMinutes}m</td>
-                        <td className="py-3 px-3">{getStatusBadge(status)}</td>
+                {/* Table for this date */}
+                <div className={`rounded-xl border overflow-hidden ${cardBg}`}>
+                  <table className="w-full text-left text-xs">
+                    <thead className="text-[11px] font-bold uppercase text-zinc-400 border-b border-zinc-800/60 bg-zinc-950/60">
+                      <tr>
+                        <th className="py-3 px-4">Salesperson</th>
+                        <th className="py-3 px-4">Customer / Company</th>
+                        <th className="py-3 px-4">Purpose</th>
+                        <th className="py-3 px-4">Duration</th>
+                        <th className="py-3 px-4">Status</th>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            )}
-          </div>
-        </div>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-800/60">
+                      {dayLogs.map(log => {
+                        const cust = customers.find(c => c.id === log.customerId);
+                        const rep = users.find(u => u.id === log.userId);
+                        const status = (log as any).callStatus || 'Sales';
+                        const isSelected = selectedCallLog?.id === log.id;
+
+                        return (
+                          <tr
+                            key={log.id}
+                            onClick={() => setSelectedCallLog(log)}
+                            className={`cursor-pointer transition-colors hover:bg-zinc-800/40 ${isSelected ? 'bg-amber-950/25 border-l-2 border-amber-500' : ''}`}
+                          >
+                            <td className="py-3 px-4 font-semibold text-zinc-300">{rep?.name || 'Staff'}</td>
+                            <td className="py-3 px-4">
+                              <div className="font-bold text-white">{cust?.customerName || 'Unknown'}</div>
+                              <div className="text-[11px] text-zinc-400">{cust?.companyName || 'Independent'}</div>
+                            </td>
+                            <td className="py-3 px-4 text-zinc-300 max-w-[220px] truncate">{log.purpose}</td>
+                            <td className="py-3 px-4 font-mono text-zinc-400">{log.durationMinutes}m</td>
+                            <td className="py-3 px-4">{getStatusBadge(status)}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            );
+          })
+        )}
       </div>
 
-      {/* Absolute / Fixed Slide-Over Drawer for Customer Quick-Panel */}
+      {/* Save Preset Modal */}
+      {showSaveModal && (
+        <div className="fixed inset-0 bg-zinc-950/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className={`rounded-2xl shadow-xl max-w-sm w-full overflow-hidden border ${cardBg}`}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-800">
+              <h3 className="font-bold text-white text-sm">Save Current Filter Preset</h3>
+              <button onClick={() => setShowSaveModal(false)} className="text-zinc-400 hover:text-zinc-200">×</button>
+            </div>
+            <form onSubmit={handleSavePreset} className="p-5 space-y-4">
+              <div>
+                <label className="block text-xs font-bold uppercase text-zinc-400 mb-1">Preset Name</label>
+                <input
+                  type="text"
+                  value={newPresetName}
+                  onChange={(e) => setNewPresetName(e.target.value)}
+                  placeholder="e.g. Bole Out-of-Stock This Week"
+                  className={`w-full ${inputBg} border rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-amber-600`}
+                  required
+                />
+              </div>
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button type="button" onClick={() => setShowSaveModal(false)} className="px-4 py-2 bg-zinc-800 text-zinc-300 rounded-xl text-xs font-semibold">Cancel</button>
+                <button type="submit" className="px-5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-semibold">Save Preset</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Customer Quick-Panel Slide-Over Drawer */}
       {selectedCallLog && selectedCustomer && (
         <div className="fixed inset-0 z-50 overflow-hidden bg-zinc-950/60 backdrop-blur-xs flex justify-end">
           <div className="w-full max-w-md bg-[#161616] border-l border-zinc-800 shadow-2xl p-6 space-y-5 overflow-y-auto animate-slide-in-right">
