@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Customer, CallLog, Branch, User } from '../types/crm';
-import { PhoneCall, Filter, Search, Calendar, Clock, UserCheck, CheckCircle2, AlertTriangle, ArrowRight, X, Bookmark, Download, Save, Trash2, TrendingUp } from 'lucide-react';
+import { PhoneCall, Filter, Search, Calendar, Clock, UserCheck, CheckCircle2, AlertTriangle, ArrowRight, X, Bookmark, Download, Save, Trash2, TrendingUp, Send } from 'lucide-react';
 
 interface MainCommunicationFeedViewProps {
   customers: Customer[];
@@ -15,13 +15,13 @@ interface MainCommunicationFeedViewProps {
 }
 
 const CALL_STATUSES = [
-  'Sales',
-  'Evaluation',
-  'Service',
-  'Out of List',
-  'Out of Stock',
-  'Pre-order',
-  'Complaint',
+  { label: 'Sales', color: 'border-emerald-500/30 text-emerald-400 bg-emerald-500/10' },
+  { label: 'Evaluation', color: 'border-cyan-500/30 text-cyan-400 bg-cyan-500/10' },
+  { label: 'Service', color: 'border-violet-500/30 text-violet-400 bg-violet-500/10' },
+  { label: 'Out of Stock', color: 'border-amber-500/30 text-amber-400 bg-amber-500/10' },
+  { label: 'Pre-order', color: 'border-indigo-500/30 text-indigo-400 bg-indigo-500/10' },
+  { label: 'Complaint', color: 'border-rose-500/30 text-rose-400 bg-rose-500/10' },
+  { label: 'Out of List', color: 'border-neutral-700 text-neutral-400 bg-neutral-800/60' },
 ] as const;
 
 interface CommPreset {
@@ -84,7 +84,6 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
     const cust = customers.find(c => c.id === log.customerId);
     if (!cust) return false;
 
-    // Quick Search
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       const matchName = cust.customerName.toLowerCase().includes(q);
@@ -94,7 +93,6 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
       if (!matchName && !matchComp && !matchPhone && !matchPurpose) return false;
     }
 
-    // Branch filter
     if (selectedBranch !== 'all') {
       const branchObj = branches.find(b => b.id === selectedBranch);
       const custBranch = branches.find(b => b.id === cust.branchId)?.name.toLowerCase() || '';
@@ -104,7 +102,6 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
       if (branchObj && cust.branchId !== selectedBranch) return false;
     }
 
-    // Sales Rep filter
     if (selectedRep !== 'all') {
       const repObj = users.find(u => u.id === log.userId);
       const repName = repObj ? repObj.name.toLowerCase() : '';
@@ -114,14 +111,11 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
       if (repObj && log.userId !== selectedRep) return false;
     }
 
-    // Customer Type toggle
     if (customerType !== 'All' && cust.customerType !== customerType) return false;
 
-    // Status filter
     const status = (log as any).callStatus || 'Sales';
     if (selectedStatuses.length > 0 && !selectedStatuses.includes(status)) return false;
 
-    // Date Range
     const logDate = new Date(log.dateTime);
     const logDateStr = log.dateTime.split('T')[0];
     if (selectedDateRange === 'today' && logDateStr !== todayStr) return false;
@@ -138,7 +132,6 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
     return true;
   });
 
-  // Group logs by date
   const groupedByDate: Record<string, CallLog[]> = {};
   filteredLogs.forEach(log => {
     const dateKey = log.dateTime.split('T')[0];
@@ -147,7 +140,6 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
   });
   const sortedDates = Object.keys(groupedByDate).sort((a, b) => b.localeCompare(a));
 
-  // Rollups
   const statusCounts: Record<string, number> = {
     Sales: 0,
     Evaluation: 0,
@@ -239,179 +231,181 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
   };
 
   const getStatusBadge = (status: string) => {
-    const colors: Record<string, string> = {
-      Sales: 'bg-emerald-950/60 text-emerald-300 border-emerald-800',
-      Evaluation: 'bg-sky-950/60 text-sky-300 border-sky-800',
-      Service: 'bg-purple-950/60 text-purple-300 border-purple-800',
-      'Out of List': 'bg-zinc-800 text-zinc-300 border-zinc-700',
-      'Out of Stock': 'bg-red-950/60 text-red-400 border-red-800',
-      'Pre-order': 'bg-amber-950/60 text-amber-300 border-amber-800',
-      Complaint: 'bg-rose-950/60 text-rose-300 border-rose-800',
+    const styleMap: Record<string, string> = {
+      Sales: 'border-emerald-500/30 text-emerald-400 bg-emerald-500/10',
+      Evaluation: 'border-cyan-500/30 text-cyan-400 bg-cyan-500/10',
+      Service: 'border-violet-500/30 text-violet-400 bg-violet-500/10',
+      'Out of Stock': 'border-amber-500/30 text-amber-400 bg-amber-500/10',
+      'Pre-order': 'border-indigo-500/30 text-indigo-400 bg-indigo-500/10',
+      Complaint: 'border-rose-500/30 text-rose-400 bg-rose-500/10',
+      'Out of List': 'border-neutral-700 text-neutral-400 bg-neutral-800/60',
     };
-    return <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold border ${colors[status] || colors.Sales}`}>{status}</span>;
+    return <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-semibold border ${styleMap[status] || styleMap.Sales}`}>{status}</span>;
   };
 
-  const cardBg = isDark ? 'bg-[#18181b] border-zinc-800/60' : 'bg-white border-slate-200';
-  const rowBg = isDark ? 'bg-zinc-950/40 border-zinc-800/60' : 'bg-slate-50 border-slate-200';
-  const inputBg = isDark ? 'bg-[#121212] border-neutral-700 text-neutral-200' : 'bg-slate-50 border-slate-200 text-slate-800';
+  const getInitials = (name: string) => {
+    return name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+  };
 
   const selectedCustomer = selectedCallLog ? customers.find(c => c.id === selectedCallLog.customerId) : null;
+  const cardBg = 'bg-[#18181b] border-zinc-800/60';
+  const inputBg = 'bg-[#121212] border-neutral-700 text-neutral-200';
 
   return (
-    <div className="flex flex-col gap-5 w-full relative">
+    <div className="flex flex-col gap-5 w-full relative max-w-7xl mx-auto pb-12">
       {/* Header */}
-      <div className={`p-6 rounded-xl border flex flex-col md:flex-row md:items-center justify-between gap-4 ${cardBg}`}>
+      <div className="bg-[#18181b] border border-neutral-800/80 rounded-2xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-lg">
         <div>
           <div className="flex items-center gap-2.5">
-            <h2 className="text-xl font-bold text-white">Main Communications Feed</h2>
+            <h2 className="text-xl font-bold text-white tracking-tight">Main Communications Feed</h2>
             <span className="flex items-center gap-1.5 text-xs text-emerald-400 font-semibold bg-emerald-950/40 px-2.5 py-1 rounded-full border border-emerald-800/60">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
               Live Feed
             </span>
           </div>
-          <p className={`text-sm mt-0.5 ${isDark ? 'text-zinc-400' : 'text-slate-500'}`}>
-            Company-wide real-time communications stream with sleeker status cards and clean top toolbar alignment.
+          <p className="text-sm text-neutral-400 mt-0.5">
+            Real-time showroom communication stream and daily status rollups.
           </p>
         </div>
-        <button onClick={onOpenLogCall} className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-semibold shadow-sm transition-colors">
-          + Log New Communication
+        <button onClick={onOpenLogCall} className="px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-semibold shadow-sm transition-colors">
+          + Log Communication
         </button>
       </div>
 
-      {/* TOP HORIZONTAL FILTER BAR (Aligned) */}
-      <div className="w-full bg-[#181818] border border-neutral-800 rounded-xl p-4 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-3 flex-1">
-            {/* Quick Search */}
-            <div className="relative min-w-[220px]">
-              <input
-                type="text"
-                placeholder="Search name, company, phone..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-[#121212] border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-200 placeholder-neutral-500 focus:outline-none focus:border-amber-500"
-              />
-            </div>
-
-            {/* Branch Dropdown */}
-            <select 
-              value={selectedBranch} 
-              onChange={(e) => setSelectedBranch(e.target.value)}
-              className="bg-[#121212] border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-200 focus:outline-none focus:border-amber-500"
-            >
-              <option value="all">All Branches</option>
-              <option value="bole">Bole Printing Showroom</option>
-              <option value="piassa">Piassa Retail Branch</option>
-              <option value="mexico">Mexico Machinery Hub</option>
-            </select>
-
-            {/* Sales Rep Dropdown */}
-            <select 
-              value={selectedRep} 
-              onChange={(e) => setSelectedRep(e.target.value)}
-              className="bg-[#121212] border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-200 focus:outline-none focus:border-amber-500"
-            >
-              <option value="all">All Reps</option>
-              <option value="ephrem">Ephrem Mamo</option>
-              <option value="kidus">Kidus Alemayehu</option>
-              <option value="mekdes">Mekdes Zewdu</option>
-            </select>
-
-            {/* Customer Type Toggle */}
-            <div className="flex bg-[#121212] border border-neutral-700 rounded-lg p-0.5 text-xs">
-              {['All', 'New', 'Old'].map((type) => (
-                <button
-                  key={type}
-                  onClick={() => setCustomerType(type)}
-                  className={`px-3 py-1.5 rounded-md font-medium transition-colors ${
-                    customerType === type 
-                      ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40' 
-                      : 'text-neutral-400 hover:text-neutral-200'
-                  }`}
-                >
-                  {type}
-                </button>
-              ))}
-            </div>
-
-            {/* Date Range Selector */}
-            <select 
-              value={selectedDateRange} 
-              onChange={(e) => setSelectedDateRange(e.target.value)}
-              className="bg-[#121212] border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-200 focus:outline-none focus:border-amber-500"
-            >
-              <option value="today">Today</option>
-              <option value="yesterday">Yesterday</option>
-              <option value="this_week">This Week</option>
-              <option value="last_week">Last Week</option>
-              <option value="this_month">This Month</option>
-            </select>
+      {/* TOP HORIZONTAL FILTER BAR */}
+      <div className="w-full bg-[#161616] border border-neutral-800/80 rounded-xl p-3 flex flex-wrap items-center justify-between gap-3 shadow-sm">
+        <div className="flex flex-wrap items-center gap-3 flex-1">
+          {/* Quick Search */}
+          <div className="relative min-w-[240px]">
+            <Search className="w-4 h-4 text-neutral-500 absolute left-3 top-2.5" />
+            <input
+              type="text"
+              placeholder="Search name, company, phone..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full h-9 bg-[#0d0d0d] border border-neutral-800 rounded-lg pl-9 pr-3 text-xs text-neutral-200 placeholder-neutral-500 focus:outline-none focus:border-amber-500"
+            />
           </div>
 
-          {/* Export Actions & Save View Aligned Far Right */}
-          <div className="flex items-center gap-2">
-            {savedPresets.length > 0 && (
-              <select onChange={(e) => { const p = savedPresets.find(x => x.id === e.target.value); if (p) applyPreset(p); }} className="bg-[#121212] border border-neutral-700 rounded-lg px-2.5 py-2 text-xs font-medium text-neutral-300">
-                <option value="">Saved Views ({savedPresets.length})...</option>
-                {savedPresets.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
-            )}
-            <button 
-              onClick={handleSaveFilter}
-              className="flex items-center gap-1.5 px-3 py-2 bg-[#222] hover:bg-[#2a2a2a] border border-neutral-700 rounded-lg text-xs font-medium text-neutral-300"
-            >
-              💾 Save View
-            </button>
-            <button 
-              onClick={exportToCSV}
-              className="px-3 py-2 bg-[#222] hover:bg-[#2a2a2a] border border-neutral-700 rounded-lg text-xs font-medium text-neutral-300"
-            >
-              CSV
-            </button>
-            <button 
-              onClick={exportToExcel}
-              className="px-3 py-2 bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-700/50 rounded-lg text-xs font-medium text-emerald-300"
-            >
-              Excel (.xlsx)
-            </button>
+          {/* Branch Dropdown */}
+          <select 
+            value={selectedBranch} 
+            onChange={(e) => setSelectedBranch(e.target.value)}
+            className="h-9 bg-[#0d0d0d] border border-neutral-800 hover:border-neutral-700 rounded-lg px-3 text-xs text-neutral-300 focus:outline-none focus:border-amber-500 font-medium"
+          >
+            <option value="all">All Branches</option>
+            <option value="bole">Bole Printing Showroom</option>
+            <option value="piassa">Piassa Retail Branch</option>
+            <option value="mexico">Mexico Machinery Hub</option>
+          </select>
+
+          {/* Sales Rep Dropdown */}
+          <select 
+            value={selectedRep} 
+            onChange={(e) => setSelectedRep(e.target.value)}
+            className="h-9 bg-[#0d0d0d] border border-neutral-800 hover:border-neutral-700 rounded-lg px-3 text-xs text-neutral-300 focus:outline-none focus:border-amber-500 font-medium"
+          >
+            <option value="all">All Reps</option>
+            <option value="ephrem">Ephrem Mamo</option>
+            <option value="kidus">Kidus Alemayehu</option>
+            <option value="mekdes">Mekdes Zewdu</option>
+          </select>
+
+          {/* Customer Type Toggle */}
+          <div className="h-9 bg-[#0d0d0d] border border-neutral-800 rounded-lg p-1 flex items-center text-xs">
+            {['All', 'New', 'Old'].map((type) => (
+              <button
+                key={type}
+                onClick={() => setCustomerType(type)}
+                className={`px-3 py-1 rounded-md font-medium transition-colors ${
+                  customerType === type 
+                    ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40' 
+                    : 'text-neutral-400 hover:text-neutral-200'
+                }`}
+              >
+                {type}
+              </button>
+            ))}
           </div>
+
+          {/* Date Range Selector */}
+          <select 
+            value={selectedDateRange} 
+            onChange={(e) => setSelectedDateRange(e.target.value)}
+            className="h-9 bg-[#0d0d0d] border border-neutral-800 hover:border-neutral-700 rounded-lg px-3 text-xs text-neutral-300 focus:outline-none focus:border-amber-500 font-medium"
+          >
+            <option value="today">Today</option>
+            <option value="yesterday">Yesterday</option>
+            <option value="this_week">This Week</option>
+            <option value="last_week">Last Week</option>
+            <option value="this_month">This Month</option>
+          </select>
+        </div>
+
+        {/* Export Actions & Save View (Aligned Far Right) */}
+        <div className="flex items-center gap-2">
+          {savedPresets.length > 0 && (
+            <select onChange={(e) => { const p = savedPresets.find(x => x.id === e.target.value); if (p) applyPreset(p); }} className="h-9 bg-[#0d0d0d] border border-neutral-800 rounded-lg px-2 text-xs font-medium text-neutral-300">
+              <option value="">Saved Views ({savedPresets.length})...</option>
+              {savedPresets.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+          )}
+          <button 
+            onClick={handleSaveFilter}
+            className="h-9 px-3 bg-[#0d0d0d] hover:bg-neutral-800 border border-neutral-800 rounded-lg text-xs font-medium text-neutral-300 transition-colors flex items-center gap-1.5"
+          >
+            💾 Save View
+          </button>
+          <button 
+            onClick={exportToCSV}
+            className="h-9 px-3 bg-[#0d0d0d] hover:bg-neutral-800 border border-neutral-800 rounded-lg text-xs font-medium text-neutral-300 transition-colors"
+          >
+            CSV
+          </button>
+          <button 
+            onClick={exportToExcel}
+            className="h-9 px-3 bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-700/50 rounded-lg text-xs font-medium text-emerald-300 transition-colors"
+          >
+            Excel (.xlsx)
+          </button>
         </div>
       </div>
 
-      {/* Sleeker & Smaller 7-Status Rollup Cards Engine */}
-      <div className={`p-4 rounded-xl border ${cardBg} space-y-3`}>
-        <div className="flex items-center justify-between">
+      {/* COMPACT 7-STATUS ROLLUP ENGINE */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between px-1">
           <h3 className="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
             <TrendingUp className="w-4 h-4" />
             <span>{getRollupTitle()}</span>
           </h3>
           <span className="text-xs font-mono text-neutral-400">{filteredLogs.length} calls • {totalMinutes} total mins</span>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2.5">
-          {CALL_STATUSES.map(status => {
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
+          {CALL_STATUSES.map(statusObj => {
+            const status = statusObj.label;
             const isActive = selectedStatuses.includes(status);
             return (
               <button
                 key={status}
                 onClick={() => toggleStatusFilter(status)}
-                className={`flex flex-col items-center justify-center p-2 rounded-lg border transition-all ${
+                className={`flex flex-col items-center justify-center p-2.5 rounded-lg border transition-all text-left cursor-pointer ${
                   isActive
-                    ? 'bg-amber-500/15 border-amber-500 text-amber-300 shadow-sm'
-                    : 'bg-[#181818] border-neutral-800 text-neutral-400 hover:border-neutral-700 hover:text-neutral-200'
+                    ? 'bg-amber-500/15 border-amber-500 text-amber-300 shadow-sm ring-1 ring-amber-500/30'
+                    : 'bg-[#141414] border-neutral-800/80 text-neutral-400 hover:border-neutral-700 hover:text-neutral-200'
                 }`}
               >
-                <span className="text-[11px] font-medium uppercase tracking-wider text-neutral-400 truncate w-full text-center">
+                <span className="text-[10px] uppercase font-semibold tracking-wider text-neutral-400 truncate w-full text-center">
                   {status}
                 </span>
-                <span className="text-base font-bold text-neutral-100 mt-0.5 font-mono">
+                <span className="text-lg font-bold text-neutral-100 mt-1 font-mono">
                   {statusCounts[status]}
                 </span>
               </button>
             );
           })}
-          <div className="flex flex-col items-center justify-center p-2 rounded-lg border bg-[#181818] border-neutral-800 text-neutral-300">
-            <span className="text-[11px] font-medium uppercase tracking-wider text-neutral-400 truncate w-full text-center">New / Old</span>
-            <span className="text-sm font-bold text-amber-300 mt-0.5 font-mono">{newCustCount} / {oldCustCount}</span>
+          <div className="flex flex-col items-center justify-center p-2.5 rounded-lg border bg-[#141414] border-neutral-800/80 text-neutral-300">
+            <span className="text-[10px] uppercase font-semibold tracking-wider text-neutral-400 truncate w-full text-center">New / Old</span>
+            <span className="text-sm font-bold text-amber-300 mt-1 font-mono">{newCustCount} / {oldCustCount}</span>
           </div>
         </div>
       </div>
@@ -435,8 +429,8 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
       {/* Date-Grouped Feeds (Full Width) */}
       <div className="space-y-6">
         {filteredLogs.length === 0 ? (
-          <div className={`p-12 text-center rounded-xl border ${cardBg}`}>
-            <p className="text-xs text-zinc-500">No communication logs match the current filters.</p>
+          <div className="p-12 text-center rounded-xl border bg-[#18181b] border-neutral-800">
+            <p className="text-xs text-neutral-500">No communication logs match the current filters.</p>
           </div>
         ) : (
           sortedDates.map(dateStr => {
@@ -448,12 +442,12 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
             return (
               <div key={dateStr} className="space-y-2">
                 {/* Date Section Header */}
-                <div className="flex items-center justify-between px-3.5 py-2.5 bg-[#1c1c1c] rounded-lg border border-neutral-800">
+                <div className="flex items-center justify-between px-4 py-2.5 bg-[#181818] border-y border-neutral-800 text-xs font-semibold text-amber-500 uppercase tracking-wider rounded-xl">
                   <div className="flex items-center gap-2">
                     <Calendar className="w-4 h-4 text-amber-400" />
-                    <span className="font-bold text-xs text-neutral-200 uppercase tracking-wider">{formattedDate}</span>
+                    <span className="font-bold text-neutral-200">{formattedDate}</span>
                     {isToday && (
-                      <span className="px-1.5 py-0.5 text-[10px] bg-emerald-500/10 text-emerald-400 rounded border border-emerald-500/20 font-medium">
+                      <span className="px-2 py-0.5 text-[10px] bg-emerald-500/10 text-emerald-400 rounded-md border border-emerald-500/20 font-medium">
                         TODAY
                       </span>
                     )}
@@ -463,38 +457,63 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
                   </span>
                 </div>
 
-                <div className="rounded-xl border overflow-hidden bg-zinc-950/40 border-zinc-800/60">
+                <div className="rounded-xl border overflow-hidden bg-[#141414] border-neutral-800/80 shadow-sm">
                   <table className="w-full text-left text-xs">
-                    <thead className="text-[11px] font-bold uppercase text-zinc-400 border-b border-zinc-800/60 bg-zinc-950/80">
+                    <thead className="text-[11px] font-bold uppercase text-neutral-400 border-b border-neutral-800/80 bg-zinc-950/80">
                       <tr>
                         <th className="py-3 px-4">Salesperson</th>
-                        <th className="py-3 px-4">Customer / Company</th>
+                        <th className="py-3 px-4">Customer & Print Shop</th>
                         <th className="py-3 px-4">Purpose</th>
                         <th className="py-3 px-4">Duration</th>
                         <th className="py-3 px-4">Status</th>
+                        <th className="py-3 px-4 text-right">Actions</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-zinc-800/40">
+                    <tbody className="divide-y divide-neutral-800/50">
                       {dayLogs.map(log => {
                         const cust = customers.find(c => c.id === log.customerId);
                         const rep = users.find(u => u.id === log.userId);
                         const status = (log as any).callStatus || 'Sales';
                         const isSelected = selectedCallLog?.id === log.id;
+                        const cleanPhone = cust?.phoneNumber ? cust.phoneNumber.replace(/^0/, '') : '';
 
                         return (
                           <tr
                             key={log.id}
                             onClick={() => setSelectedCallLog(log)}
-                            className={`cursor-pointer transition-colors hover:bg-zinc-800/40 ${isSelected ? 'bg-amber-950/25 border-l-2 border-amber-500' : ''}`}
+                            className={`border-b border-neutral-800/50 hover:bg-[#1a1a1a] transition-colors cursor-pointer group ${isSelected ? 'bg-amber-950/25 border-l-2 border-amber-500' : ''}`}
                           >
-                            <td className="py-3 px-4 font-semibold text-zinc-300">{rep?.name || 'Staff'}</td>
                             <td className="py-3 px-4">
-                              <div className="font-bold text-white">{cust?.customerName || 'Unknown'}</div>
-                              <div className="text-[11px] text-zinc-400">{cust?.companyName || 'Independent'}</div>
+                              <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 rounded-full bg-neutral-800 border border-neutral-700 flex items-center justify-center text-[10px] font-bold text-neutral-300">
+                                  {getInitials(rep?.name || 'Staff')}
+                                </div>
+                                <span className="font-semibold text-neutral-300">{rep?.name || 'Staff'}</span>
+                              </div>
                             </td>
-                            <td className="py-3 px-4 text-zinc-300 max-w-[250px] truncate">{log.purpose}</td>
-                            <td className="py-3 px-4 font-mono text-zinc-400">{log.durationMinutes}m</td>
+                            <td className="py-3 px-4">
+                              <span className="text-sm font-medium text-neutral-100 group-hover:text-amber-400 transition-colors">
+                                {cust?.customerName || 'Unknown'}
+                              </span>
+                              <p className="text-xs text-neutral-400 mt-0.5">
+                                {cust?.companyName || 'Independent'} • <span className="font-mono text-[11px] text-neutral-500">{cust?.phoneNumber}</span>
+                              </p>
+                            </td>
+                            <td className="py-3 px-4 text-neutral-300 max-w-[250px] truncate">{log.purpose}</td>
+                            <td className="py-3 px-4 font-mono text-neutral-400">{log.durationMinutes}m</td>
                             <td className="py-3 px-4">{getStatusBadge(status)}</td>
+                            <td className="py-3 px-4 text-right" onClick={(e) => e.stopPropagation()}>
+                              <div className="flex items-center justify-end gap-1.5 opacity-80 group-hover:opacity-100">
+                                <a href={`tel:${cust?.phoneNumber}`} className="p-1.5 bg-neutral-800 hover:bg-neutral-700 rounded text-neutral-300" title="Call">
+                                  📞
+                                </a>
+                                {cleanPhone && (
+                                  <a href={`https://t.me/+251${cleanPhone}`} target="_blank" rel="noopener noreferrer" className="p-1.5 bg-neutral-800 hover:bg-neutral-700 rounded text-sky-400" title="Telegram">
+                                    ✈️
+                                  </a>
+                                )}
+                              </div>
+                            </td>
                           </tr>
                         );
                       })}
