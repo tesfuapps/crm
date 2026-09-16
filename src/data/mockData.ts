@@ -28,86 +28,89 @@ export const INITIAL_PRODUCTS: ProductItem[] = [
 ];
 
 export const INITIAL_CUSTOMERS: Customer[] = [
-  {
-    id: 'c1', customerName: 'Ato Samuel Kebede', companyName: 'Habesha Gift & Print Shop',
-    phoneNumber: '0911223344', alternatePhone: '0922334455', email: 'samuel@habeshaprint.et',
-    customerType: 'New', source: 'Telegram', purposeOfCall: 'Inquired about 5-in-1 Combo Heat Press and blank t-shirts',
-    customerStage: 'Lead', assignedUserId: 'u3', branchId: 'b1', mainBranchId: 'b1',
-    nextFollowUpDate: '2026-03-15', lastContactedDate: '2026-03-08',
-    leadPriority: 'Hot', dealValue: 31500,
-    createdAt: '2026-03-01T10:30:00Z', updatedAt: '2026-03-08T14:20:00Z',
-    consecutivePurchaseStreak: {}, branchReassignmentLog: [],
-  },
-  {
-    id: 'c2', customerName: 'W/ro Tigist Haile', companyName: 'Addis Souvenirs & Sublimation',
-    phoneNumber: '0912345678', email: 'tigist@addissouvenirs.et',
-    customerType: 'Old', source: 'Previous Buyer', purposeOfCall: 'Reordering box of 36 blank ceramic mugs and mug press accessories',
-    customerStage: 'Client', assignedUserId: 'u3', branchId: 'b1', mainBranchId: 'b1',
-    nextFollowUpDate: '2026-03-20', lastContactedDate: '2026-03-07',
-    leadPriority: 'Warm', dealValue: 16700,
-    createdAt: '2026-02-15T09:00:00Z', updatedAt: '2026-03-07T11:10:00Z',
-    consecutivePurchaseStreak: { b1: 3 }, branchReassignmentLog: [],
-  },
-  {
-    id: 'c3', customerName: 'Dr. Yonas Berhane', companyName: 'Bole Corporate Seal & Stamp',
-    phoneNumber: '0913456789', alternatePhone: '0945678901', email: 'yonas@bolestamps.et',
-    customerType: 'New', source: 'Referral', purposeOfCall: 'Looking for Flash Stamp Making Machine and self-inking mounts',
-    customerStage: 'Customer', assignedUserId: 'u5', branchId: 'b2', mainBranchId: 'b2',
-    nextFollowUpDate: '2026-03-12', lastContactedDate: '2026-03-08',
-    leadPriority: 'Hot', dealValue: 22300,
-    createdAt: '2026-03-02T14:15:00Z', updatedAt: '2026-03-08T16:40:00Z',
-    consecutivePurchaseStreak: {}, branchReassignmentLog: [],
-  },
-  {
-    id: 'c4', customerName: 'Ato Fikru Lemma', companyName: 'Merkato Gift Center',
-    phoneNumber: '0914567890', email: 'fikru@merkatogifts.et',
-    customerType: 'New', source: 'Facebook', purposeOfCall: 'Inquiry regarding Sublimation Glass Photo Frames and Keychains wholesale',
-    customerStage: 'Contact', assignedUserId: 'u5', branchId: 'b2', mainBranchId: 'b2',
-    nextFollowUpDate: '2026-03-14', lastContactedDate: '2026-03-05',
-    leadPriority: 'Warm', dealValue: 12000,
-    createdAt: '2026-03-05T11:00:00Z', updatedAt: '2026-03-05T11:00:00Z',
-    consecutivePurchaseStreak: {}, branchReassignmentLog: [],
-  },
-  {
-    id: 'c5', customerName: 'W/ro Aster Tadesse', companyName: 'Piassa Apparel & Print',
-    phoneNumber: '0915678901', email: 'aster@piassaprint.et',
-    customerType: 'Old', source: 'Exhibition', purposeOfCall: 'Interested in upgrading to Mug Press Machine Pro',
-    customerStage: 'Lead', assignedUserId: 'u6', branchId: 'b3', mainBranchId: 'b3',
-    nextFollowUpDate: '2026-03-13', lastContactedDate: '2026-03-06',
-    leadPriority: 'Cold', dealValue: 12500,
-    createdAt: '2026-02-20T16:30:00Z', updatedAt: '2026-03-06T10:00:00Z',
-    consecutivePurchaseStreak: {}, branchReassignmentLog: [],
-  },
-  {
-    id: 'c6', customerName: 'Ato Redwan Mohammed', companyName: 'Meskel Square Printing Hub',
-    phoneNumber: '0916789012', email: 'redwan@meskelprint.et',
-    customerType: 'New', source: 'Telegram', purposeOfCall: 'Bulk order for PU Leather Photo Album blanks and glass frames',
-    customerStage: 'Client', assignedUserId: 'u6', branchId: 'b3', mainBranchId: 'b3',
-    nextFollowUpDate: '2026-04-01', lastContactedDate: '2026-03-08',
-    leadPriority: 'Hot', dealValue: 15200,
-    createdAt: '2026-02-28T09:20:00Z', updatedAt: '2026-03-08T15:00:00Z',
-    consecutivePurchaseStreak: { b3: 4 }, branchReassignmentLog: [],
-  },
+  { id: 'c1', customerName: 'Ato Samuel Kebede', companyName: 'Habesha Gift & Print Shop', phoneNumber: '0911223344', customerType: 'Old', source: 'Telegram', purposeOfCall: '5-in-1 Heat Press Purchase Order', customerStage: 'Client', assignedUserId: 'u3', branchId: 'b1', mainBranchId: 'b1', leadPriority: 'Hot', dealValue: 31500, createdAt: '2026-09-01T10:30:00Z', updatedAt: '2026-09-16T10:30:00Z', consecutivePurchaseStreak: {}, branchReassignmentLog: [] },
+  { id: 'c2', customerName: 'W/ro Tigist Haile', companyName: 'Addis Souvenirs & Sublimation', phoneNumber: '0912345678', customerType: 'Old', source: 'Phone', purposeOfCall: 'Sublimation Metal Keychains Request', customerStage: 'Customer', assignedUserId: 'u3', branchId: 'b1', mainBranchId: 'b1', leadPriority: 'Warm', dealValue: 16700, createdAt: '2026-09-02T09:00:00Z', updatedAt: '2026-09-16T11:15:00Z', consecutivePurchaseStreak: {}, branchReassignmentLog: [] },
+  { id: 'c3', customerName: 'Dr. Yonas Berhane', companyName: 'Bole Corporate Seal & Stamp', phoneNumber: '0913456789', customerType: 'Old', source: 'Walk-in', purposeOfCall: 'Flash Stamp Exposure Tube Maintenance', customerStage: 'Client', assignedUserId: 'u5', branchId: 'b2', mainBranchId: 'b2', leadPriority: 'Hot', dealValue: 22300, createdAt: '2026-09-03T14:15:00Z', updatedAt: '2026-09-16T09:40:00Z', consecutivePurchaseStreak: {}, branchReassignmentLog: [] },
+  { id: 'c4', customerName: 'Ato Fikru Lemma', companyName: 'Merkato Gift Center', phoneNumber: '0914567890', customerType: 'New', source: 'Facebook', purposeOfCall: 'DTF Printer vs Screen Printing Costing', customerStage: 'Lead', assignedUserId: 'u5', branchId: 'b2', mainBranchId: 'b2', leadPriority: 'Warm', dealValue: 12000, createdAt: '2026-09-04T11:00:00Z', updatedAt: '2026-09-16T11:50:00Z', consecutivePurchaseStreak: {}, branchReassignmentLog: [] },
+  { id: 'c5', customerName: 'W/ro Aster Tadesse', companyName: 'Piassa Apparel & Print', phoneNumber: '0915678901', customerType: 'Old', source: 'Telegram', purposeOfCall: 'Box of 36 Blank Ceramic Mugs', customerStage: 'Client', assignedUserId: 'u6', branchId: 'b3', mainBranchId: 'b3', leadPriority: 'Warm', dealValue: 12500, createdAt: '2026-09-05T08:30:00Z', updatedAt: '2026-09-16T08:30:00Z', consecutivePurchaseStreak: {}, branchReassignmentLog: [] },
+  { id: 'c6', customerName: 'Ato Redwan Mohammed', companyName: 'Meskel Square Printing Hub', phoneNumber: '0916789012', customerType: 'Old', source: 'Telegram', purposeOfCall: 'High-Speed Roll Laminator Booking', customerStage: 'Client', assignedUserId: 'u6', branchId: 'b3', mainBranchId: 'b3', leadPriority: 'Hot', dealValue: 15200, createdAt: '2026-09-06T09:20:00Z', updatedAt: '2026-09-16T10:05:00Z', consecutivePurchaseStreak: {}, branchReassignmentLog: [] },
+  { id: 'c7', customerName: 'Ato Dawit Tadesse', companyName: 'Alpha Graphics & Advertising', phoneNumber: '0922114455', customerType: 'New', source: 'Referral', purposeOfCall: 'Polyester T-Shirt Blanks (50 pcs)', customerStage: 'Lead', assignedUserId: 'u3', branchId: 'b1', mainBranchId: 'b1', leadPriority: 'Hot', dealValue: 18000, createdAt: '2026-09-07T10:00:00Z', updatedAt: '2026-09-16T11:20:00Z', consecutivePurchaseStreak: {}, branchReassignmentLog: [] },
+  { id: 'c8', customerName: 'W/ro Selamawit Bekele', companyName: 'Kazanchis Digital Press', phoneNumber: '0933557799', customerType: 'Old', source: 'Phone', purposeOfCall: 'Mug Press Heating Element Uneven Heat', customerStage: 'Customer', assignedUserId: 'u6', branchId: 'b3', mainBranchId: 'b3', leadPriority: 'Warm', dealValue: 14000, createdAt: '2026-09-08T09:00:00Z', updatedAt: '2026-09-16T12:00:00Z', consecutivePurchaseStreak: {}, branchReassignmentLog: [] },
+  { id: 'c9', customerName: 'Ato Girma Wolde', companyName: 'Babich Big Market Prints', phoneNumber: '0918882233', customerType: 'Old', source: 'Telegram', purposeOfCall: 'UV DTF Film A3 Rolls', customerStage: 'Customer', assignedUserId: 'u5', branchId: 'b2', mainBranchId: 'b2', leadPriority: 'Cold', dealValue: 11000, createdAt: '2026-09-08T10:00:00Z', updatedAt: '2026-09-16T09:10:00Z', consecutivePurchaseStreak: {}, branchReassignmentLog: [] },
+  { id: 'c10', customerName: 'Ato Henok Tesfaye', companyName: 'St. George Branding & Gifts', phoneNumber: '0911776655', customerType: 'New', source: 'TikTok', purposeOfCall: 'Automatic Badge Making Machine', customerStage: 'Lead', assignedUserId: 'u6', branchId: 'b3', mainBranchId: 'b3', leadPriority: 'Hot', dealValue: 24000, createdAt: '2026-09-09T14:00:00Z', updatedAt: '2026-09-15T15:30:00Z', consecutivePurchaseStreak: {}, branchReassignmentLog: [] },
+  { id: 'c11', customerName: 'W/ro Meron Alemu', companyName: 'Finfinne Promotional Products', phoneNumber: '0920334411', customerType: 'New', source: 'Exhibition', purposeOfCall: 'Rotary Attachment for Tumbler Printing', customerStage: 'Contact', assignedUserId: 'u3', branchId: 'b1', mainBranchId: 'b1', leadPriority: 'Warm', dealValue: 9500, createdAt: '2026-09-10T11:00:00Z', updatedAt: '2026-09-15T14:10:00Z', consecutivePurchaseStreak: {}, branchReassignmentLog: [] },
+  { id: 'c12', customerName: 'Ato Bekele Shiferaw', companyName: 'Gerji Creative Studio', phoneNumber: '0917228833', customerType: 'Old', source: 'Telegram', purposeOfCall: 'Sublimation Ink Color Profile Tuning', customerStage: 'Client', assignedUserId: 'u3', branchId: 'b1', mainBranchId: 'b1', leadPriority: 'Warm', dealValue: 16000, createdAt: '2026-09-11T09:00:00Z', updatedAt: '2026-09-15T11:45:00Z', consecutivePurchaseStreak: {}, branchReassignmentLog: [] },
+  { id: 'c13', customerName: 'Ato Natnael Desta', companyName: 'Megenagna Stationery & Copy', phoneNumber: '0944112288', customerType: 'Old', source: 'Walk-in', purposeOfCall: 'Heavy Duty Manual Paper Cutter A4', customerStage: 'Customer', assignedUserId: 'u3', branchId: 'b1', mainBranchId: 'b1', leadPriority: 'Warm', dealValue: 13500, createdAt: '2026-09-12T10:00:00Z', updatedAt: '2026-09-15T16:20:00Z', consecutivePurchaseStreak: {}, branchReassignmentLog: [] },
+  { id: 'c14', customerName: 'W/ro Bethzatha Kassa', companyName: 'Summit Photo Studio', phoneNumber: '0911993344', customerType: 'Old', source: 'Phone', purposeOfCall: 'Sublimation Glass Photo Frames (Beveled)', customerStage: 'Customer', assignedUserId: 'u3', branchId: 'b1', mainBranchId: 'b1', leadPriority: 'Warm', dealValue: 8500, createdAt: '2026-09-12T11:00:00Z', updatedAt: '2026-09-15T10:00:00Z', consecutivePurchaseStreak: {}, branchReassignmentLog: [] },
+  { id: 'c15', customerName: 'Ato Yohannes Gebre', companyName: 'Gotera Textile & Screen Print', phoneNumber: '0929887766', customerType: 'Old', source: 'Telegram', purposeOfCall: 'Plastisol Inks & Squeegees Pack', customerStage: 'Client', assignedUserId: 'u5', branchId: 'b2', mainBranchId: 'b2', leadPriority: 'Hot', dealValue: 19000, createdAt: '2026-09-13T09:00:00Z', updatedAt: '2026-09-15T13:15:00Z', consecutivePurchaseStreak: {}, branchReassignmentLog: [] },
+  { id: 'c16', customerName: 'Ato Kassahun Tulu', companyName: 'Kolfe Garment Printing', phoneNumber: '0913884411', customerType: 'New', source: 'Facebook', purposeOfCall: '4-Color 1-Station Screen Press', customerStage: 'Lead', assignedUserId: 'u5', branchId: 'b2', mainBranchId: 'b2', leadPriority: 'Hot', dealValue: 45000, createdAt: '2026-09-13T10:00:00Z', updatedAt: '2026-09-15T16:50:00Z', consecutivePurchaseStreak: {}, branchReassignmentLog: [] },
+  { id: 'c17', customerName: 'W/ro Rahel Assefa', companyName: 'Arat Kilo Stationery Hub', phoneNumber: '0912774400', customerType: 'Old', source: 'Phone', purposeOfCall: 'Damaged Packaging on Sublimation Paper', customerStage: 'Customer', assignedUserId: 'u6', branchId: 'b3', mainBranchId: 'b3', leadPriority: 'Warm', dealValue: 7500, createdAt: '2026-09-13T11:00:00Z', updatedAt: '2026-09-15T09:20:00Z', consecutivePurchaseStreak: {}, branchReassignmentLog: [] },
+  { id: 'c18', customerName: 'Ato Biruk Solomon', companyName: 'CMC Custom T-Shirts', phoneNumber: '0911003322', customerType: 'Old', source: 'Telegram', purposeOfCall: 'Dark Transfer Paper Pack (A4 50 sheets)', customerStage: 'Client', assignedUserId: 'u3', branchId: 'b1', mainBranchId: 'b1', leadPriority: 'Warm', dealValue: 6500, createdAt: '2026-09-14T09:00:00Z', updatedAt: '2026-09-14T14:00:00Z', consecutivePurchaseStreak: {}, branchReassignmentLog: [] },
+  { id: 'c19', customerName: 'W/ro Helen Mengistu', companyName: 'Sarbet Souvenir Corner', phoneNumber: '0921447788', customerType: 'New', source: 'Walk-in', purposeOfCall: 'Sublimation Magic Mugs vs Normal White', customerStage: 'Lead', assignedUserId: 'u3', branchId: 'b1', mainBranchId: 'b1', leadPriority: 'Warm', dealValue: 9200, createdAt: '2026-09-14T10:00:00Z', updatedAt: '2026-09-14T11:30:00Z', consecutivePurchaseStreak: {}, branchReassignmentLog: [] },
+  { id: 'c20', customerName: 'Dr. Eyob Tekle', companyName: 'Hayat Hospital Lab', phoneNumber: '0911665544', customerType: 'Old', source: 'Telegram', purposeOfCall: 'Pre-inked Doctor Stamps (3 units)', customerStage: 'Client', assignedUserId: 'u3', branchId: 'b1', mainBranchId: 'b1', leadPriority: 'Hot', dealValue: 8400, createdAt: '2026-09-14T11:00:00Z', updatedAt: '2026-09-14T15:45:00Z', consecutivePurchaseStreak: {}, branchReassignmentLog: [] },
+  { id: 'c21', customerName: 'Ato Tilahun Abera', companyName: 'Merkato Wholesale Stationery', phoneNumber: '0912110099', customerType: 'Old', source: 'Phone', purposeOfCall: 'Self-Inking Stamp Mounts (Wholesale Box)', customerStage: 'Client', assignedUserId: 'u5', branchId: 'b2', mainBranchId: 'b2', leadPriority: 'Hot', dealValue: 28000, createdAt: '2026-09-14T12:00:00Z', updatedAt: '2026-09-14T10:15:00Z', consecutivePurchaseStreak: {}, branchReassignmentLog: [] },
+  { id: 'c22', customerName: 'W/ro Hiwot Negash', companyName: 'Bole Medhanialem Prints', phoneNumber: '0919332211', customerType: 'Old', source: 'Telegram', purposeOfCall: 'A3 Sublimation Paper (100gsm)', customerStage: 'Customer', assignedUserId: 'u3', branchId: 'b1', mainBranchId: 'b1', leadPriority: 'Cold', dealValue: 5000, createdAt: '2026-09-14T13:00:00Z', updatedAt: '2026-09-14T16:10:00Z', consecutivePurchaseStreak: {}, branchReassignmentLog: [] },
+  { id: 'c23', customerName: 'Ato Mesfin Dagne', companyName: 'Piassa Clock Tower Gifts', phoneNumber: '0911558822', customerType: 'Old', source: 'Walk-in', purposeOfCall: 'Cap Heat Press Curved Pad Replacement', customerStage: 'Customer', assignedUserId: 'u6', branchId: 'b3', mainBranchId: 'b3', leadPriority: 'Warm', dealValue: 3500, createdAt: '2026-09-14T14:00:00Z', updatedAt: '2026-09-14T13:40:00Z', consecutivePurchaseStreak: {}, branchReassignmentLog: [] },
+  { id: 'c24', customerName: 'Ato Eskinder Guta', companyName: '22 Mazoria Branding', phoneNumber: '0930114477', customerType: 'New', source: 'Telegram', purposeOfCall: 'Sublimation Rock Slate Printing Heat Time', customerStage: 'Lead', assignedUserId: 'u3', branchId: 'b1', mainBranchId: 'b1', leadPriority: 'Warm', dealValue: 11000, createdAt: '2026-09-14T15:00:00Z', updatedAt: '2026-09-14T09:50:00Z', consecutivePurchaseStreak: {}, branchReassignmentLog: [] },
+  { id: 'c25', customerName: 'W/ro Kalkidan Ayele', companyName: 'Tor Hailoch Sports Wear', phoneNumber: '0911448822', customerType: 'Old', source: 'Telegram', purposeOfCall: 'Number Heat Transfer Vinyl (10m Roll)', customerStage: 'Client', assignedUserId: 'u5', branchId: 'b2', mainBranchId: 'b2', leadPriority: 'Hot', dealValue: 12500, createdAt: '2026-09-13T09:00:00Z', updatedAt: '2026-09-13T14:20:00Z', consecutivePurchaseStreak: {}, branchReassignmentLog: [] },
+  { id: 'c26', customerName: 'Ato Dereje Belay', companyName: 'Kality Industrial Badge Co.', phoneNumber: '0922883311', customerType: 'Old', source: 'Phone', purposeOfCall: 'Name Tag Pin Backing Plates (100 pcs)', customerStage: 'Client', assignedUserId: 'u5', branchId: 'b2', mainBranchId: 'b2', leadPriority: 'Warm', dealValue: 9800, createdAt: '2026-09-13T10:00:00Z', updatedAt: '2026-09-13T11:00:00Z', consecutivePurchaseStreak: {}, branchReassignmentLog: [] },
+  { id: 'c27', customerName: 'W/ro Tsion Fanta', companyName: 'Ayat Zone 3 Photo Studio', phoneNumber: '0915227744', customerType: 'New', source: 'Phone', purposeOfCall: 'Canvas Stretching Pliers', customerStage: 'Contact', assignedUserId: 'u3', branchId: 'b1', mainBranchId: 'b1', leadPriority: 'Cold', dealValue: 4000, createdAt: '2026-09-13T11:00:00Z', updatedAt: '2026-09-13T15:10:00Z', consecutivePurchaseStreak: {}, branchReassignmentLog: [] },
+  { id: 'c28', customerName: 'Ato Abinet Worku', companyName: 'Gullele Signage Workshop', phoneNumber: '0911330088', customerType: 'New', source: 'Facebook', purposeOfCall: 'Vinyl Cutting Plotter 720mm', customerStage: 'Lead', assignedUserId: 'u6', branchId: 'b3', mainBranchId: 'b3', leadPriority: 'Hot', dealValue: 38000, createdAt: '2026-09-13T12:00:00Z', updatedAt: '2026-09-13T10:40:00Z', consecutivePurchaseStreak: {}, branchReassignmentLog: [] },
+  { id: 'c29', customerName: 'Ato Solomon Chernet', companyName: 'Churchill Road Print Station', phoneNumber: '0912663399', customerType: 'Old', source: 'Walk-in', purposeOfCall: 'Laminating Pouches A4 (100 pack)', customerStage: 'Client', assignedUserId: 'u6', branchId: 'b3', mainBranchId: 'b3', leadPriority: 'Warm', dealValue: 3200, createdAt: '2026-09-13T13:00:00Z', updatedAt: '2026-09-13T16:30:00Z', consecutivePurchaseStreak: {}, branchReassignmentLog: [] },
+  { id: 'c30', customerName: 'W/ro Bethlehem Tadesse', companyName: 'Bole Atlas Boutique Gifts', phoneNumber: '0911880022', customerType: 'Old', source: 'Walk-in', purposeOfCall: 'Sublimation Pillow Cover Zipper Issue', customerStage: 'Customer', assignedUserId: 'u3', branchId: 'b1', mainBranchId: 'b1', leadPriority: 'Warm', dealValue: 6000, createdAt: '2026-09-13T14:00:00Z', updatedAt: '2026-09-13T12:15:00Z', consecutivePurchaseStreak: {}, branchReassignmentLog: [] },
 ];
 
 export const INITIAL_CALL_LOGS: CallLog[] = [
-  { id: 'cl1', customerId: 'c1', userId: 'u3', dateTime: '2026-03-08T14:20:00Z', durationMinutes: 12, purpose: 'Machinery Demo Inquiry', remark: 'Customer is very interested in the 5-in-1 Combo Heat Press. Requested a live demonstration of cap and mug printing at the Bole showroom.' },
-  { id: 'cl2', customerId: 'c1', userId: 'u3', dateTime: '2026-03-04T10:15:00Z', durationMinutes: 8, purpose: 'Blank T-Shirt Pricing', remark: 'Contacted via Telegram. Sent wholesale price list for sublimation t-shirt blanks.' },
-  { id: 'cl3', customerId: 'c2', userId: 'u3', dateTime: '2026-03-07T11:10:00Z', durationMinutes: 15, purpose: 'Mug Stock Reorder', remark: 'Confirmed order for 2 boxes of ceramic mugs. Payment completed via CBE.' },
-  { id: 'cl4', customerId: 'c3', userId: 'u5', dateTime: '2026-03-08T16:40:00Z', durationMinutes: 20, purpose: 'Stamp Machine Setup', remark: 'Agreed on Flash Stamp Making Machine and stamp mounts kit. PO ready for delivery.' },
-  { id: 'cl5', customerId: 'c4', userId: 'u5', dateTime: '2026-03-05T11:00:00Z', durationMinutes: 6, purpose: 'Sublimation Gifts Catalog', remark: 'Sent catalog of glass photo frames and metal keychains via Telegram.' },
-  { id: 'cl6', customerId: 'c6', userId: 'u6', dateTime: '2026-03-08T15:00:00Z', durationMinutes: 10, purpose: 'Photo Album Wholesale', remark: 'Confirmed stock availability for PU Leather Photo Albums. Dispatching via courier.' },
+  // TODAY (Sep 16, 2026)
+  { id: 'cl_50_1', customerId: 'c1', userId: 'u3', dateTime: '2026-09-16T10:30:00Z', durationMinutes: 18, purpose: '5-in-1 Heat Press Purchase Order', remark: 'Confirmed order for combo heat press and 2 boxes of mugs. Needs delivery to Bole.', callStatus: 'Sales' },
+  { id: 'cl_50_2', customerId: 'c2', userId: 'u3', dateTime: '2026-09-16T11:15:00Z', durationMinutes: 8, purpose: 'Sublimation Metal Keychains Request', remark: 'Requested 200 round metal keychains. Currently out of stock, notified ETA Friday.', callStatus: 'Out of Stock' },
+  { id: 'cl_50_3', customerId: 'c3', userId: 'u5', dateTime: '2026-09-16T09:40:00Z', durationMinutes: 25, purpose: 'Flash Stamp Exposure Tube Maintenance', remark: 'Laser exposure lamp flickering. Technician assigned to service machine at Mexico branch.', callStatus: 'Service' },
+  { id: 'cl_50_4', customerId: 'c4', userId: 'u5', dateTime: '2026-09-16T11:50:00Z', durationMinutes: 22, purpose: 'DTF Printer vs Screen Printing Costing', remark: 'Inquiring about entry-level DTF printer ink costs compared to traditional screen printing.', callStatus: 'Evaluation' },
+  { id: 'cl_50_5', customerId: 'c5', userId: 'u6', dateTime: '2026-09-16T08:30:00Z', durationMinutes: 12, purpose: 'Box of 36 Blank Ceramic Mugs', remark: 'Repeated order for 36 sublimation mugs. Picked up directly at Piassa branch.', callStatus: 'Sales' },
+  { id: 'cl_50_6', customerId: 'c6', userId: 'u6', dateTime: '2026-09-16T10:05:00Z', durationMinutes: 15, purpose: 'High-Speed Roll Laminator Booking', remark: 'Placed advance booking for 650mm thermal laminator arriving next shipment.', callStatus: 'Pre-order' },
+  { id: 'cl_50_7', customerId: 'c7', userId: 'u3', dateTime: '2026-09-16T11:20:00Z', durationMinutes: 14, purpose: 'Polyester T-Shirt Blanks (50 pcs)', remark: 'Sample order of white sublimation round-neck shirts for event branding.', callStatus: 'Sales' },
+  { id: 'cl_50_8', customerId: 'c8', userId: 'u6', dateTime: '2026-09-16T12:00:00Z', durationMinutes: 20, purpose: 'Mug Press Heating Element Uneven Heat', remark: 'Customer reported bottom rim of mugs coming out faded. Advised temperature calibration.', callStatus: 'Complaint' },
+  { id: 'cl_50_9', customerId: 'c9', userId: 'u5', dateTime: '2026-09-16T09:10:00Z', durationMinutes: 6, purpose: 'UV DTF Film A3 Rolls', remark: 'Inquired about A3 UV DTF AB film. We do not currently stock UV transfer film.', callStatus: 'Out of List' },
+
+  // YESTERDAY (Sep 15, 2026)
+  { id: 'cl_50_10', customerId: 'c10', userId: 'u6', dateTime: '2026-09-15T15:30:00Z', durationMinutes: 16, purpose: 'Automatic Badge Making Machine', remark: 'Bought 58mm pin button badge maker + 500 blank badge consumables.', callStatus: 'Sales' },
+  { id: 'cl_50_11', customerId: 'c11', userId: 'u3', dateTime: '2026-09-15T14:10:00Z', durationMinutes: 19, purpose: 'Rotary Attachment for Tumbler Printing', remark: 'Needs rotary clamp for printing 20oz stainless steel tumblers on standard heat press.', callStatus: 'Evaluation' },
+  { id: 'cl_50_12', customerId: 'c12', userId: 'u3', dateTime: '2026-09-15T11:45:00Z', durationMinutes: 30, purpose: 'Sublimation Ink Color Profile Tuning', remark: 'Sent ICC color profiles for Epson L1800 printer to resolve reddish black tints.', callStatus: 'Service' },
+  { id: 'cl_50_13', customerId: 'c13', userId: 'u3', dateTime: '2026-09-15T16:20:00Z', durationMinutes: 15, purpose: 'Heavy Duty Manual Paper Cutter A4', remark: 'Purchased guillotine paper trimmer with safety blade guard.', callStatus: 'Sales' },
+  { id: 'cl_50_14', customerId: 'c14', userId: 'u3', dateTime: '2026-09-15T10:00:00Z', durationMinutes: 7, purpose: 'Sublimation Glass Photo Frames (Beveled)', remark: 'Looking for 20x25cm glass photo plaques. Out of stock, suggested rock slate frames.', callStatus: 'Out of Stock' },
+  { id: 'cl_50_15', customerId: 'c15', userId: 'u5', dateTime: '2026-09-15T13:15:00Z', durationMinutes: 21, purpose: 'Plastisol Inks & Squeegees Pack', remark: 'Repeat purchase of gold rubber paste and wooden handle squeegees.', callStatus: 'Sales' },
+  { id: 'cl_50_16', customerId: 'c16', userId: 'u5', dateTime: '2026-09-15T16:50:00Z', durationMinutes: 25, purpose: '4-Color 1-Station Screen Press', remark: 'Deposited 30% advance for screen printing press arriving in 10 days.', callStatus: 'Pre-order' },
+  { id: 'cl_50_17', customerId: 'c17', userId: 'u6', dateTime: '2026-09-15T09:20:00Z', durationMinutes: 11, purpose: 'Damaged Packaging on Sublimation Paper', remark: 'Corner of 100-sheet sublimation paper pack was bent during dispatch. Replaced pack.', callStatus: 'Complaint' },
+
+  // 2 DAYS AGO (Sep 14, 2026)
+  { id: 'cl_50_18', customerId: 'c18', userId: 'u3', dateTime: '2026-09-14T14:00:00Z', durationMinutes: 10, purpose: 'Dark Transfer Paper Pack (A4 50 sheets)', remark: 'Standard transfer paper reorder for dark cotton shirts.', callStatus: 'Sales' },
+  { id: 'cl_50_19', customerId: 'c19', userId: 'u3', dateTime: '2026-09-14T11:30:00Z', durationMinutes: 15, purpose: 'Sublimation Magic Mugs vs Normal White', remark: 'Explained color change mechanism when hot water is poured. Provided sample unit.', callStatus: 'Evaluation' },
+  { id: 'cl_50_20', customerId: 'c20', userId: 'u3', dateTime: '2026-09-14T15:45:00Z', durationMinutes: 18, purpose: 'Pre-inked Doctor Stamps (3 units)', remark: 'Ordered 3 signature and stamp mounts for new outpatient doctors.', callStatus: 'Sales' },
+  { id: 'cl_50_21', customerId: 'c21', userId: 'u5', dateTime: '2026-09-14T10:15:00Z', durationMinutes: 24, purpose: 'Self-Inking Stamp Mounts (Wholesale Box)', remark: 'Bulk purchase of 100 pocket stamp handles and red/blue replacement pads.', callStatus: 'Sales' },
+  { id: 'cl_50_22', customerId: 'c22', userId: 'u3', dateTime: '2026-09-14T16:10:00Z', durationMinutes: 5, purpose: 'A3 Sublimation Paper (100gsm)', remark: 'Only A4 sublimation paper available. Suggested joining two A4 sheets or waiting 3 days.', callStatus: 'Out of Stock' },
+  { id: 'cl_50_23', customerId: 'c23', userId: 'u6', dateTime: '2026-09-14T13:40:00Z', durationMinutes: 22, purpose: 'Cap Heat Press Curved Pad Replacement', remark: 'Replaced silicone heating pad on cap press and tested with test transfer.', callStatus: 'Service' },
+  { id: 'cl_50_24', customerId: 'c24', userId: 'u3', dateTime: '2026-09-14T09:50:00Z', durationMinutes: 13, purpose: 'Sublimation Rock Slate Printing Heat Time', remark: 'Advised 195°C for 450 seconds with face-down transfer method.', callStatus: 'Evaluation' },
+
+  // 3 DAYS AGO (Sep 13, 2026)
+  { id: 'cl_50_25', customerId: 'c25', userId: 'u5', dateTime: '2026-09-13T14:20:00Z', durationMinutes: 16, purpose: 'Number Heat Transfer Vinyl (10m Roll)', remark: 'PU vinyl in white and gold for football jersey numbering.', callStatus: 'Sales' },
+  { id: 'cl_50_26', customerId: 'c26', userId: 'u5', dateTime: '2026-09-13T11:00:00Z', durationMinutes: 12, purpose: 'Name Tag Pin Backing Plates (100 pcs)', remark: 'Magnetic and pin badge accessories for company staff IDs.', callStatus: 'Sales' },
+  { id: 'cl_50_27', customerId: 'c27', userId: 'u3', dateTime: '2026-09-13T15:10:00Z', durationMinutes: 4, purpose: 'Canvas Stretching Pliers', remark: 'Requested canvas stretching tools. Referred to local hardware suppliers.', callStatus: 'Out of List' },
+  { id: 'cl_50_28', customerId: 'c28', userId: 'u6', dateTime: '2026-09-13T10:40:00Z', durationMinutes: 28, purpose: 'Vinyl Cutting Plotter 720mm', remark: 'Advance booking for camera contour cutting plotter with software license.', callStatus: 'Pre-order' },
+  { id: 'cl_50_29', customerId: 'c29', userId: 'u6', dateTime: '2026-09-13T16:30:00Z', durationMinutes: 8, purpose: 'Laminating Pouches A4 (100 pack)', remark: 'Purchased 2 packs of 125-micron thermal laminating sheets.', callStatus: 'Sales' },
+  { id: 'cl_50_30', customerId: 'c30', userId: 'u3', dateTime: '2026-09-13T12:15:00Z', durationMinutes: 17, purpose: 'Sublimation Pillow Cover Zipper Issue', remark: 'One sequin cushion cover zipper came off. Replaced with fresh inventory immediately.', callStatus: 'Complaint' },
 ];
 
 export const INITIAL_SALES: ProductSale[] = [
-  { id: 's1', customerId: 'c2', itemId: 'p2', quantity: 2, saleDate: '2026-03-07', saleAmount: 8400 },
-  { id: 's2', customerId: 'c3', itemId: 'p5', quantity: 1, saleDate: '2026-03-08', saleAmount: 19500 },
-  { id: 's3', customerId: 'c6', itemId: 'p9', quantity: 4, saleDate: '2026-03-08', saleAmount: 15200 },
+  { id: 's1', customerId: 'c1', itemId: 'p3', quantity: 1, saleDate: '2026-09-16', saleAmount: 28000 },
+  { id: 's2', customerId: 'c5', itemId: 'p2', quantity: 1, saleDate: '2026-09-16', saleAmount: 4200 },
+  { id: 's3', customerId: 'c6', itemId: 'p1', quantity: 1, saleDate: '2026-09-16', saleAmount: 12500 },
+  { id: 's4', customerId: 'c10', itemId: 'p5', quantity: 1, saleDate: '2026-09-15', saleAmount: 19500 },
+  { id: 's5', customerId: 'c15', itemId: 'p6', quantity: 2, saleDate: '2026-09-15', saleAmount: 5600 },
 ];
 
 export const INITIAL_NOTIFICATIONS: Notification[] = [
-  { id: 'n1', recipientUserId: 'u2', type: 'system', title: 'Welcome', message: 'You are now the Branch Manager for Bole Printing Showroom.', read: false, createdAt: '2026-03-01T09:00:00Z' },
-  { id: 'n2', recipientUserId: 'u5', type: 'system', title: 'Welcome', message: 'You are now the Branch Manager for Mexico Machinery Hub.', read: false, createdAt: '2026-03-01T09:00:00Z' },
+  { id: 'n1', recipientUserId: 'u2', type: 'system', title: 'Welcome', message: 'You are now the Branch Manager for Bole Printing Showroom.', read: false, createdAt: '2026-09-01T09:00:00Z' },
+  { id: 'n2', recipientUserId: 'u4', type: 'system', title: 'Welcome', message: 'You are now the Branch Manager for Mexico Machinery Hub.', read: false, createdAt: '2026-09-01T09:00:00Z' },
 ];
 
 export const INITIAL_LABELS: Label[] = [
@@ -121,7 +124,7 @@ export const INITIAL_LABELS: Label[] = [
 export const INITIAL_FILTER_PRESETS: FilterPreset[] = [];
 
 export const DASHBOARD_METRICS = {
-  wonOpportunity: 83,
+  wonOpportunity: 35,
   salesOrdersToBill: 647,
   salesOrdersToDeliver: 1082,
 };

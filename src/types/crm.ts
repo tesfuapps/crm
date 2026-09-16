@@ -104,6 +104,7 @@ export interface CallLog {
   durationMinutes: number;
   purpose: string;
   remark: string;
+  callStatus?: 'Sales' | 'Evaluation' | 'Service' | 'Out of List' | 'Out of Stock' | 'Pre-order' | 'Complaint';
 }
 
 export interface ProductItem {
