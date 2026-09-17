@@ -399,7 +399,8 @@ export function App() {
           {activeTab === 'communications' && (
             <MainCommunicationFeedView customers={customers} callLogs={callLogs} users={users} branches={branches}
               currentUser={currentUser} selectedBranchId={selectedBranchId} theme={theme}
-              onSelectCustomer={handleSelectCustomer} onOpenLogCall={() => setIsIncomingCallOpen(true)} />
+              onSelectCustomer={handleSelectCustomer} onOpenLogCall={() => setIsIncomingCallOpen(true)}
+              products={products} />
           )}
           {activeTab === 'calendar' && (
             <CalendarFollowUpsView customers={customers} branches={branches} users={users} selectedBranchId={selectedBranchId}
@@ -436,7 +437,7 @@ export function App() {
 
       <IncomingCallWidget isOpen={isIncomingCallOpen} onClose={() => setIsIncomingCallOpen(false)}
         customers={customers} currentUser={currentUser} theme={theme}
-        onSaveCallLog={handleSaveCallLog} onSelectCustomer={handleSelectCustomer} />
+        onSaveCallLog={handleSaveCallLog} onSelectCustomer={handleSelectCustomer} products={products} />
 
       {/* Toast Notifications */}
       <div className="fixed bottom-6 right-6 z-50 space-y-2">

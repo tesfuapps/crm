@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Customer, CallLog, Branch, User } from '../types/crm';
-import { PhoneCall, Filter, Search, Calendar, Clock, UserCheck, CheckCircle2, AlertTriangle, ArrowRight, X, Bookmark, Download, Save, Trash2, TrendingUp } from 'lucide-react';
+import { Customer, CallLog, Branch, User, ProductItem } from '../types/crm';
+import { PhoneCall, Filter, Search, Calendar, Clock, UserCheck, CheckCircle2, AlertTriangle, ArrowRight, X, Bookmark, Download, Save, Trash2, TrendingUp, Package } from 'lucide-react';
 
 interface MainCommunicationFeedViewProps {
   customers: Customer[];
@@ -12,6 +12,7 @@ interface MainCommunicationFeedViewProps {
   theme: 'light' | 'dark';
   onSelectCustomer: (customer: Customer) => void;
   onOpenLogCall: () => void;
+  products: ProductItem[];
 }
 
 const CALL_STATUSES = [
@@ -44,6 +45,7 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
   theme,
   onSelectCustomer,
   onOpenLogCall,
+  products,
 }) => {
   const isDark = theme === 'dark';
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
@@ -51,6 +53,7 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
   const [selectedRep, setSelectedRep] = useState<string>('all');
   const [customerType, setCustomerType] = useState<string>('All');
   const [selectedDateRange, setSelectedDateRange] = useState<string>('this_week');
+  const [selectedProduct, setSelectedProduct] = useState<string>('all');
   const [activeTab, setActiveTab] = useState<'feed' | 'unresolved' | 'my-calls'>('feed');
   const [selectedCallLog, setSelectedCallLog] = useState<CallLog | null>(null);
 
@@ -117,6 +120,12 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
     if (activeTab === 'my-calls' && log.userId !== currentUser.id) return false;
     if (activeTab === 'unresolved' && cust.nextFollowUpDate && cust.nextFollowUpDate < todayStr) {
       return false;
+    }
+
+    if (selectedProduct !== 'all') {
+      if (log.productId !== selectedProduct && log.unlistedProductName !== selectedProduct) {
+        return false;
+      }
     }
 
     return true;
@@ -331,6 +340,18 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
               <option value="this_week">This Week</option>
               <option value="last_week">Last Week</option>
               <option value="this_month">This Month</option>
+            </select>
+
+            {/* Product Filter Dropdown */}
+            <select
+              value={selectedProduct}
+              onChange={(e) => setSelectedProduct(e.target.value)}
+              className="h-9 bg-[#121212] border border-neutral-700 rounded-lg px-3 text-xs text-neutral-200 focus:outline-none focus:border-amber-500 font-medium"
+            >
+              <option value="all">All Products ▾</option>
+              {products.map(p => (
+                <option key={p.id} value={p.id}>{p.itemName}</option>
+              ))}
             </select>
           </div>
 

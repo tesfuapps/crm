@@ -105,6 +105,9 @@ export interface CallLog {
   purpose: string;
   remark: string;
   callStatus?: 'Sales' | 'Evaluation' | 'Service' | 'Out of List' | 'Out of Stock' | 'Pre-order' | 'Complaint';
+  productId?: string;
+  unlistedProductName?: string;
+  isUnlistedProduct?: boolean;
 }
 
 export interface ProductItem {

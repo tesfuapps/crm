@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Customer, CallLog, User, CustomerStage } from '../types/crm';
-import { PhoneCall, Search, UserPlus, CheckCircle, X } from 'lucide-react';
+import { Customer, CallLog, User, CustomerStage, ProductItem, Notification } from '../types/crm';
+import { PhoneCall, Search, UserPlus, CheckCircle, X, Package } from 'lucide-react';
 
 interface IncomingCallWidgetProps {
   isOpen: boolean;
@@ -10,6 +10,7 @@ interface IncomingCallWidgetProps {
   theme: 'light' | 'dark';
   onSaveCallLog: (newLog: CallLog, updatedCustomer?: Partial<Customer>, newCustomer?: Customer) => void;
   onSelectCustomer: (customer: Customer) => void;
+  products: ProductItem[];
 }
 
 export const IncomingCallWidget: React.FC<IncomingCallWidgetProps> = ({
@@ -19,11 +20,14 @@ export const IncomingCallWidget: React.FC<IncomingCallWidgetProps> = ({
   currentUser,
   theme,
   onSaveCallLog,
+  products,
 }) => {
   const [phoneInput, setPhoneInput] = useState('');
   const [remark, setRemark] = useState('');
   const [outcome, setOutcome] = useState('Sales');
   const [duration, setDuration] = useState(5);
+  const [selectedProductId, setSelectedProductId] = useState('none');
+  const [unlistedProductName, setUnlistedProductName] = useState('');
 
   // New customer fields if not found
   const [newName, setNewName] = useState('');
@@ -53,11 +57,17 @@ export const IncomingCallWidget: React.FC<IncomingCallWidgetProps> = ({
       durationMinutes: Number(duration),
       purpose: outcome,
       remark,
+      callStatus: outcome as any,
+      productId: selectedProductId !== 'none' && selectedProductId !== 'unlisted' ? selectedProductId : undefined,
+      isUnlistedProduct: selectedProductId === 'unlisted',
+      unlistedProductName: selectedProductId === 'unlisted' ? unlistedProductName : undefined,
     };
 
     onSaveCallLog(newLog);
     setPhoneInput('');
     setRemark('');
+    setSelectedProductId('none');
+    setUnlistedProductName('');
     onClose();
   };
 
@@ -94,6 +104,10 @@ export const IncomingCallWidget: React.FC<IncomingCallWidgetProps> = ({
       durationMinutes: Number(duration),
       purpose: outcome,
       remark,
+      callStatus: outcome as any,
+      productId: selectedProductId !== 'none' && selectedProductId !== 'unlisted' ? selectedProductId : undefined,
+      isUnlistedProduct: selectedProductId === 'unlisted',
+      unlistedProductName: selectedProductId === 'unlisted' ? unlistedProductName : undefined,
     };
 
     onSaveCallLog(newLog, undefined, newCust);
@@ -101,6 +115,8 @@ export const IncomingCallWidget: React.FC<IncomingCallWidgetProps> = ({
     setRemark('');
     setNewName('');
     setNewCompany('');
+    setSelectedProductId('none');
+    setUnlistedProductName('');
     onClose();
   };
 
@@ -209,6 +225,38 @@ export const IncomingCallWidget: React.FC<IncomingCallWidgetProps> = ({
                     </div>
 
                     <div>
+                      <label className={`block text-[11px] font-bold uppercase mb-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Product Discussed / Requested</label>
+                      <select
+                        value={selectedProductId}
+                        onChange={(e) => setSelectedProductId(e.target.value)}
+                        className={`w-full border rounded-lg px-2.5 py-2 text-xs font-semibold ${
+                          isDark ? 'bg-[#1F2937] border-emerald-700 text-slate-100' : 'bg-white border-emerald-300 text-slate-800'
+                        }`}
+                      >
+                        <option value="none">-- Select Catalog Product --</option>
+                        {products.map(p => (
+                          <option key={p.id} value={p.id}>{p.itemName} ({p.itemCategory})</option>
+                        ))}
+                        <option value="unlisted">➕ Tag as Unlisted Product...</option>
+                      </select>
+                      {selectedProductId === 'unlisted' && (
+                        <div className="mt-2">
+                          <input
+                            type="text"
+                            value={unlistedProductName}
+                            onChange={(e) => setUnlistedProductName(e.target.value)}
+                            placeholder="Enter unlisted item name (e.g. Epson L8180, A3 UV DTF Film)..."
+                            className={`w-full border rounded-lg px-2.5 py-2 text-xs font-medium ${
+                              isDark ? 'bg-[#1F2937] border-amber-600 text-amber-200 placeholder-amber-400/60' : 'bg-amber-50 border-amber-500 text-amber-950'
+                            }`}
+                            required
+                          />
+                          <p className="text-[10px] text-amber-500 mt-1 font-medium">💡 Will notify Procurement & Marketing Managers of new market demand.</p>
+                        </div>
+                      )}
+                    </div>
+
+                    <div>
                       <label className={`block text-[11px] font-bold uppercase mb-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Call Remarks / Notes *</label>
                       <textarea
                         rows={2}
@@ -308,6 +356,38 @@ export const IncomingCallWidget: React.FC<IncomingCallWidgetProps> = ({
                           <option value="Previous Buyer">Previous Buyer</option>
                         </select>
                       </div>
+                    </div>
+
+                    <div>
+                      <label className={`block text-[11px] font-bold uppercase mb-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Product Discussed / Requested</label>
+                      <select
+                        value={selectedProductId}
+                        onChange={(e) => setSelectedProductId(e.target.value)}
+                        className={`w-full border rounded-lg px-2.5 py-2 text-xs font-semibold ${
+                          isDark ? 'bg-[#1F2937] border-emerald-700 text-slate-100' : 'bg-white border-emerald-300 text-slate-800'
+                        }`}
+                      >
+                        <option value="none">-- Select Catalog Product --</option>
+                        {products.map(p => (
+                          <option key={p.id} value={p.id}>{p.itemName} ({p.itemCategory})</option>
+                        ))}
+                        <option value="unlisted">➕ Tag as Unlisted Product...</option>
+                      </select>
+                      {selectedProductId === 'unlisted' && (
+                        <div className="mt-2">
+                          <input
+                            type="text"
+                            value={unlistedProductName}
+                            onChange={(e) => setUnlistedProductName(e.target.value)}
+                            placeholder="Enter unlisted item name (e.g. Epson L8180, A3 UV DTF Film)..."
+                            className={`w-full border rounded-lg px-2.5 py-2 text-xs font-medium ${
+                              isDark ? 'bg-[#1F2937] border-amber-600 text-amber-200 placeholder-amber-400/60' : 'bg-amber-50 border-amber-500 text-amber-950'
+                            }`}
+                            required
+                          />
+                          <p className="text-[10px] text-amber-500 mt-1 font-medium">💡 Will notify Procurement & Marketing Managers of new market demand.</p>
+                        </div>
+                      )}
                     </div>
 
                     <div>
