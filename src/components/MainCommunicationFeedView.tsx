@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Customer, CallLog, Branch, User, ProductItem } from '../types/crm';
 import { PhoneCall, Filter, Search, Calendar, Clock, UserCheck, CheckCircle2, AlertTriangle, ArrowRight, X, Bookmark, Download, Save, Trash2, TrendingUp, Package } from 'lucide-react';
 
@@ -64,6 +64,29 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
   });
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [newPresetName, setNewPresetName] = useState('');
+  const [isActionsOpen, setIsActionsOpen] = useState(false);
+  const actionsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isActionsOpen) return;
+    const handleClickOutside = (event: MouseEvent) => {
+      if (event.target instanceof Node && !actionsRef.current?.contains(event.target)) {
+        setIsActionsOpen(false);
+      }
+    };
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsActionsOpen(false);
+        actionsRef.current?.querySelector('button')?.focus();
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [isActionsOpen]);
 
   useEffect(() => {
     localStorage.setItem('ttm_crm_comm_presets', JSON.stringify(savedPresets));
@@ -363,24 +386,38 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
                 {savedPresets.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
             )}
-            <button 
-              onClick={handleSaveFilter}
-              className="h-9 px-3 bg-[#222] hover:bg-[#2a2a2a] border border-neutral-700 rounded-lg text-xs font-medium text-neutral-300 transition-colors flex items-center gap-1.5"
-            >
-              💾 Save View
-            </button>
-            <button 
-              onClick={exportToCSV}
-              className="h-9 px-3 bg-[#222] hover:bg-[#2a2a2a] border border-neutral-700 rounded-lg text-xs font-medium text-neutral-300 transition-colors"
-            >
-              CSV
-            </button>
-            <button 
-              onClick={exportToExcel}
-              className="h-9 px-3 bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-700/50 rounded-lg text-xs font-medium text-emerald-300 transition-colors"
-            >
-              Excel (.xlsx)
-            </button>
+            <div className="relative shrink-0" ref={actionsRef} onBlur={(event) => {
+              if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setIsActionsOpen(false);
+            }}>
+              <button
+                type="button"
+                aria-expanded={isActionsOpen}
+                aria-controls="communication-actions"
+                onClick={() => setIsActionsOpen(open => !open)}
+                className={`flex items-center gap-2 h-9 px-3.5 whitespace-nowrap rounded-lg border text-xs font-medium transition-all ${isActionsOpen ? 'bg-[#1e1e1e] border-amber-500/50 text-amber-300 shadow-sm' : 'bg-[#121212] border-neutral-700 hover:border-neutral-600 text-neutral-200'}`}
+              >
+                <span>Actions & Export</span>
+                <svg className={`w-3.5 h-3.5 transition-transform duration-200 ${isActionsOpen ? 'rotate-180 text-amber-400' : 'text-neutral-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              {isActionsOpen && (
+                <div id="communication-actions" className="absolute right-0 top-full mt-1.5 w-52 bg-[#161616] border border-neutral-800 rounded-xl shadow-2xl py-1.5 z-50">
+                  <button type="button" onClick={() => { setIsActionsOpen(false); handleSaveFilter(); }} className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs text-neutral-300 hover:text-white hover:bg-neutral-800/80 transition-colors text-left">
+                    <Save className="w-4 h-4 shrink-0" />
+                    <div><div className="font-medium">Save Current View</div><div className="text-[10px] text-neutral-500">Save active filters as preset</div></div>
+                  </button>
+                  <div className="border-t border-neutral-800 my-1" />
+                  <div className="px-3 py-1 text-[10px] uppercase tracking-wider font-semibold text-neutral-500">Export Filtered Data</div>
+                  <button type="button" onClick={() => { setIsActionsOpen(false); exportToCSV(); }} className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs text-neutral-300 hover:text-white hover:bg-neutral-800/80 transition-colors text-left">
+                    <Download className="w-4 h-4 shrink-0" /><span>Export as CSV (.csv)</span>
+                  </button>
+                  <button type="button" onClick={() => { setIsActionsOpen(false); exportToExcel(); }} className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs text-emerald-400 hover:text-emerald-300 hover:bg-emerald-950/20 transition-colors text-left">
+                    <Download className="w-4 h-4 shrink-0" /><span className="font-medium">Export as Excel (.xlsx)</span>
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
