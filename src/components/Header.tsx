@@ -15,6 +15,7 @@ interface HeaderProps {
   onToggleTheme: () => void;
   onOpenNotifications: () => void;
   onOpenIncomingCall: () => void;
+  onOpenCommandPalette: () => void;
   unreadNotifCount: number;
   notifications: Notification[];
   onMarkRead: (id: string) => void;
@@ -24,7 +25,7 @@ export const Header: React.FC<HeaderProps> = ({
   branches, selectedBranchId, setSelectedBranchId,
   currentUser, setCurrentUser, users,
   searchTerm, setSearchTerm, theme, onToggleTheme,
-  onOpenNotifications, onOpenIncomingCall,
+  onOpenNotifications, onOpenIncomingCall, onOpenCommandPalette,
   unreadNotifCount, notifications, onMarkRead,
 }) => {
   const [showNotifDropdown, setShowNotifDropdown] = useState(false);
@@ -37,12 +38,12 @@ export const Header: React.FC<HeaderProps> = ({
     <header className="h-14 bg-[#09090b] border-b border-zinc-800/60 fixed top-0 right-0 left-64 z-20 px-6 flex items-center justify-between text-zinc-300">
       <div className="flex items-center gap-4 w-96">
         <div className="relative w-full">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 pointer-events-none" />
           <input
-            type="text" value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            type="text" value="" readOnly
+            onClick={onOpenCommandPalette}
             placeholder="Search or type a command (Ctrl + G)"
-            className="w-full pl-9 pr-24 py-1.5 bg-zinc-900 border border-zinc-800 rounded-lg text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-zinc-700"
+            className="w-full pl-9 pr-24 py-1.5 bg-zinc-900 border border-zinc-800 rounded-lg text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-zinc-700 cursor-pointer"
           />
           <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] bg-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded border border-zinc-700 font-mono">Ctrl + G</span>
         </div>

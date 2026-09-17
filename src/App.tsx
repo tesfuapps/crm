@@ -22,6 +22,7 @@ import { CalendarFollowUpsView } from './components/CalendarFollowUpsView';
 import { LeaderboardView } from './components/LeaderboardView';
 import { CustomerLeadboardView } from './components/CustomerLeadboardView';
 import { MainCommunicationFeedView } from './components/MainCommunicationFeedView';
+import { CommandPalette } from './components/CommandPalette';
 
 export function App() {
   const [branches, setBranches] = useState<Branch[]>(() => {
@@ -72,6 +73,7 @@ export function App() {
     return saved ? JSON.parse(saved) : INITIAL_FILTER_PRESETS;
   });
   const [isIncomingCallOpen, setIsIncomingCallOpen] = useState(false);
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [selectedCustomerForDetail, setSelectedCustomerForDetail] = useState<Customer | null>(null);
   const [toasts, setToasts] = useState<{ id: string; message: string; type: string }[]>([]);
   const [showOnboarding, setShowOnboarding] = useState(!localStorage.getItem('ttm_crm_onboarded'));
@@ -85,6 +87,20 @@ export function App() {
       return () => clearTimeout(timer);
     }
   }, [showOnboarding]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'g') {
+        e.preventDefault();
+        setIsCommandPaletteOpen(prev => !prev);
+      }
+      if (e.key === 'Escape') {
+        setIsCommandPaletteOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('ttm_crm_theme', theme);
@@ -371,6 +387,7 @@ export function App() {
           searchTerm={searchTerm} setSearchTerm={setSearchTerm} theme={theme} onToggleTheme={toggleTheme}
           onOpenNotifications={() => setActiveTab('dashboard')}
           onOpenIncomingCall={() => setIsIncomingCallOpen(true)}
+          onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
           unreadNotifCount={unreadNotifCount}
           notifications={notifications}
           onMarkRead={markNotificationRead}
@@ -438,6 +455,13 @@ export function App() {
       <IncomingCallWidget isOpen={isIncomingCallOpen} onClose={() => setIsIncomingCallOpen(false)}
         customers={customers} currentUser={currentUser} theme={theme}
         onSaveCallLog={handleSaveCallLog} onSelectCustomer={handleSelectCustomer} products={products} />
+
+      <CommandPalette
+        isOpen={isCommandPaletteOpen} onClose={() => setIsCommandPaletteOpen(false)}
+        customers={customers} callLogs={callLogs} products={products}
+        users={users} branches={branches} theme={theme}
+        setActiveTab={setActiveTab} onSelectCustomer={handleSelectCustomer}
+        onOpenIncomingCall={() => setIsIncomingCallOpen(true)} />
 
       {/* Toast Notifications */}
       <div className="fixed bottom-6 right-6 z-50 space-y-2">
