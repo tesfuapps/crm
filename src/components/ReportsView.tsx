@@ -59,41 +59,55 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
     document.body.removeChild(link);
   };
 
-  const handleExportChartImage = (containerRef: React.RefObject<HTMLDivElement>, format: 'png' | 'jpg', filename: string) => {
-    if (!containerRef.current) return;
-    const svgElement = containerRef.current.querySelector('svg');
-    if (!svgElement) return;
+  const downloadChart = (elementId: string, format: 'png' | 'jpeg', filename: string) => {
+    const container = document.getElementById(elementId);
+    if (!container) return;
 
-    const svgString = new XMLSerializer().serializeToString(svgElement);
-    const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
-    const URL = window.URL || window.webkitURL || window;
-    const blobURL = URL.createObjectURL(svgBlob);
+    const svg = container.querySelector('svg');
+    if (!svg) return;
 
-    const image = new Image();
-    image.onload = () => {
+    const rect = svg.getBoundingClientRect();
+    const width = rect.width || 500;
+    const height = rect.height || 300;
+
+    const clonedSvg = svg.cloneNode(true) as SVGSVGElement;
+    clonedSvg.setAttribute('width', `${width}px`);
+    clonedSvg.setAttribute('height', `${height}px`);
+    clonedSvg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+
+    const svgData = new XMLSerializer().serializeToString(clonedSvg);
+    const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(svgBlob);
+
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+
+    img.onload = () => {
       const canvas = document.createElement('canvas');
-      canvas.width = svgElement.clientWidth || 600;
-      canvas.height = svgElement.clientHeight || 400;
-      const context = canvas.getContext('2d');
-      if (!context) return;
+      const scale = 2;
+      canvas.width = width * scale;
+      canvas.height = height * scale;
 
-      if (format === 'jpg') {
-        context.fillStyle = '#18181b';
-        context.fillRect(0, 0, canvas.width, canvas.height);
-      }
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
 
-      context.drawImage(image, 0, 0);
-      const mimeType = format === 'png' ? 'image/png' : 'image/jpeg';
-      const uri = canvas.toDataURL(mimeType, 1.0);
+      ctx.scale(scale, scale);
+      ctx.fillStyle = '#141414';
+      ctx.fillRect(0, 0, width, height);
+      ctx.drawImage(img, 0, 0, width, height);
 
-      const downloadLink = document.createElement('a');
-      downloadLink.href = uri;
-      downloadLink.download = `${filename}.${format}`;
-      document.body.appendChild(downloadLink);
-      downloadLink.click();
-      document.body.removeChild(downloadLink);
+      const mimeType = format === 'jpeg' ? 'image/jpeg' : 'image/png';
+      const dataUrl = canvas.toDataURL(mimeType, 0.95);
+
+      const link = document.createElement('a');
+      link.download = `${filename}.${format === 'jpeg' ? 'jpg' : 'png'}`;
+      link.href = dataUrl;
+      link.click();
+
+      URL.revokeObjectURL(url);
     };
-    image.src = blobURL;
+
+    img.src = url;
   };
 
   const handleExportPDF = (title: string, dataSummary: string) => {
@@ -238,17 +252,17 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
       {/* Modern Charts Grid with PNG, JPG, PDF Export Actions */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Branch Revenue Comparison */}
-        <div className={`p-6 rounded-2xl border ${cardBg} space-y-4`} ref={barChartRef}>
+        <div id="chart-branch-revenue" className={`p-6 rounded-2xl border ${cardBg} space-y-4`} ref={barChartRef}>
           <div className="flex items-center justify-between">
             <h3 className={`font-bold flex items-center gap-2 ${cardText}`}><Building2 className="w-4 h-4 text-amber-400" /> <span>Branch Revenue Comparison (ETB)</span></h3>
             <div className="flex items-center gap-1.5">
-              <button onClick={() => handleExportChartImage(barChartRef, 'png', 'branch_revenue_chart')} className="px-2 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded text-[11px] font-semibold flex items-center gap-1" title="Download PNG">
+              <button onClick={() => downloadChart('chart-branch-revenue', 'png', 'TTM_Branch_Revenue')} className="px-2 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded text-[11px] font-semibold flex items-center gap-1 cursor-pointer" title="Download PNG">
                 <FileImage className="w-3 h-3 text-sky-400" /> PNG
               </button>
-              <button onClick={() => handleExportChartImage(barChartRef, 'jpg', 'branch_revenue_chart')} className="px-2 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded text-[11px] font-semibold flex items-center gap-1" title="Download JPG">
+              <button onClick={() => downloadChart('chart-branch-revenue', 'jpeg', 'TTM_Branch_Revenue')} className="px-2 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded text-[11px] font-semibold flex items-center gap-1 cursor-pointer" title="Download JPG">
                 <FileImage className="w-3 h-3 text-amber-400" /> JPG
               </button>
-              <button onClick={() => handleExportPDF('Branch Revenue Comparison', 'Branch revenue breakdown across Bole, Mexico, and Piassa show-rooms.')} className="px-2 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded text-[11px] font-semibold flex items-center gap-1" title="Download PDF">
+              <button onClick={() => handleExportPDF('Branch Revenue Comparison', 'Branch revenue breakdown across Bole, Mexico, and Piassa show-rooms.')} className="px-2 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded text-[11px] font-semibold flex items-center gap-1 cursor-pointer" title="Download PDF">
                 <FileText className="w-3 h-3 text-emerald-400" /> PDF
               </button>
             </div>
@@ -266,30 +280,38 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
         </div>
 
         {/* Lead Source Distribution */}
-        <div className={`p-6 rounded-2xl border ${cardBg} space-y-4`} ref={pieChartRef}>
+        <div id="chart-lead-source" className={`p-6 rounded-2xl border ${cardBg} space-y-4`} ref={pieChartRef}>
           <div className="flex items-center justify-between">
             <h3 className={`font-bold flex items-center gap-2 ${cardText}`}><TrendingUp className="w-4 h-4 text-amber-400" /> <span>Lead Source Distribution</span></h3>
             <div className="flex items-center gap-1.5">
-              <button onClick={() => handleExportChartImage(pieChartRef, 'png', 'lead_source_chart')} className="px-2 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded text-[11px] font-semibold flex items-center gap-1" title="Download PNG">
+              <button onClick={() => downloadChart('chart-lead-source', 'png', 'TTM_Lead_Sources')} className="px-2 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded text-[11px] font-semibold flex items-center gap-1 cursor-pointer" title="Download PNG">
                 <FileImage className="w-3 h-3 text-sky-400" /> PNG
               </button>
-              <button onClick={() => handleExportChartImage(pieChartRef, 'jpg', 'lead_source_chart')} className="px-2 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded text-[11px] font-semibold flex items-center gap-1" title="Download JPG">
+              <button onClick={() => downloadChart('chart-lead-source', 'jpeg', 'TTM_Lead_Sources')} className="px-2 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded text-[11px] font-semibold flex items-center gap-1 cursor-pointer" title="Download JPG">
                 <FileImage className="w-3 h-3 text-amber-400" /> JPG
               </button>
-              <button onClick={() => handleExportPDF('Lead Source Distribution', 'Breakdown of customer acquisition sources (Telegram, Facebook, Referral, etc.).')} className="px-2 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded text-[11px] font-semibold flex items-center gap-1" title="Download PDF">
+              <button onClick={() => handleExportPDF('Lead Source Distribution', 'Breakdown of customer acquisition sources (Telegram, Facebook, Referral, etc.).')} className="px-2 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded text-[11px] font-semibold flex items-center gap-1 cursor-pointer" title="Download PDF">
                 <FileText className="w-3 h-3 text-emerald-400" /> PDF
               </button>
             </div>
           </div>
-          <div className="h-72 flex items-center justify-center">
+          <div className="h-60 flex items-center justify-center">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Pie data={sourceData} cx="50%" cy="50%" outerRadius={85} dataKey="value" label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`} labelLine={{ stroke: '#71717A' }}>
+                <Pie data={sourceData} cx="50%" cy="50%" outerRadius={80} dataKey="value" label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`} labelLine={{ stroke: '#71717A' }}>
                   {sourceData.map((_, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="#18181b" strokeWidth={2} />)}
                 </Pie>
                 <Tooltip contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', borderRadius: '10px', color: '#fff', fontSize: '12px' }} />
               </PieChart>
             </ResponsiveContainer>
+          </div>
+          {/* Color Legend */}
+          <div className="flex flex-wrap items-center justify-center gap-3 pt-3 border-t border-neutral-800/80 text-[11px] text-neutral-300">
+            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-amber-500" /> Telegram</span>
+            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-blue-500" /> Referral</span>
+            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> Walk-in</span>
+            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-purple-500" /> Facebook</span>
+            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-pink-500" /> Exhibition</span>
           </div>
         </div>
       </div>
