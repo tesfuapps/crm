@@ -46,8 +46,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onCol
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'customers', label: 'Customer Directory', icon: Users },
     { id: 'communications', label: 'Communications Feed', icon: PhoneCall },
+    { id: 'customers', label: 'Customer Directory', icon: Users },
     { id: 'customer-leadboard', label: 'Customer Leaderboard', icon: Trophy },
     { id: 'calendar', label: 'Calendar & Reminders', icon: Calendar },
     { id: 'leaderboard', label: 'Team Scoreboard', icon: Trophy },

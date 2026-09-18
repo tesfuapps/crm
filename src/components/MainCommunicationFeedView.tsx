@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Customer, CallLog, Branch, User, ProductItem } from '../types/crm';
+import { EmptyState } from './EmptyState';
 import { PhoneCall, Filter, Search, Calendar, Clock, UserCheck, CheckCircle2, AlertTriangle, ArrowRight, X, Bookmark, Download, Save, Trash2, TrendingUp, Package } from 'lucide-react';
 
 interface MainCommunicationFeedViewProps {
@@ -535,9 +536,13 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
       {/* Date-Grouped Feeds (Full Width) with Call ID & Min+Sec Duration */}
       <div className="space-y-6">
         {filteredLogs.length === 0 ? (
-          <div className="p-12 text-center rounded-xl border bg-[#18181b] border-neutral-800">
-            <p className="text-xs text-neutral-500">No communication logs match the current filters.</p>
-          </div>
+          <EmptyState
+            icon="📞"
+            title="No Communications Found"
+            description="No communication logs match the current search or filters."
+            actionLabel="Log New Communication"
+            onAction={onOpenLogCall}
+          />
         ) : (
           sortedDates.map(dateStr => {
             const dayLogs = groupedByDate[dateStr];
