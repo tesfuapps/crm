@@ -23,6 +23,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [newBranchSubCity, setNewBranchSubCity] = useState('');
   const [newUserName, setNewUserName] = useState('');
   const [newUserEmail, setNewUserEmail] = useState('');
+  const [newUsername, setNewUsername] = useState('');
+  const [newMentionAliases, setNewMentionAliases] = useState('');
   const [newUserRole, setNewUserRole] = useState<User['role']>('Sales Agent');
   const [newUserBranchId, setNewUserBranchId] = useState(branches[0]?.id || 'b1');
   const [newLabelName, setNewLabelName] = useState('');
@@ -50,9 +52,21 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const handleCreateUser = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newUserName.trim() || !newUserEmail.trim()) return;
-    onAddUser({ id: 'u_' + Date.now(), name: newUserName, email: newUserEmail, role: newUserRole, branchId: newUserBranchId });
+    const username = newUsername.trim().replace(/^@+/, '').toLowerCase();
+    const mentionAliases = [...new Set(newMentionAliases.split(/[\s,]+/).map(alias => alias.replace(/^@+/, '').toLowerCase()).filter(Boolean))];
+    onAddUser({
+      id: 'u_' + Date.now(),
+      name: newUserName,
+      email: newUserEmail,
+      role: newUserRole,
+      branchId: newUserBranchId,
+      ...(username ? { username } : {}),
+      ...(mentionAliases.length ? { mentionAliases } : {}),
+    });
     setNewUserName('');
     setNewUserEmail('');
+    setNewUsername('');
+    setNewMentionAliases('');
   };
 
   const handleAddLabel = (e: React.FormEvent) => {
@@ -152,11 +166,23 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <input type="text" value={newUserName} onChange={(e) => setNewUserName(e.target.value)} placeholder="Full Name" className={`${inputBg} border rounded-xl px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-2 focus:ring-amber-600`} required />
               <input type="email" value={newUserEmail} onChange={(e) => setNewUserEmail(e.target.value)} placeholder="email@ttmcrm.et" className={`${inputBg} border rounded-xl px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-2 focus:ring-amber-600`} required />
             </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div>
+                <label htmlFor="staff-username" className={`block text-xs mb-1 ${subText}`}>Username (optional)</label>
+                <input id="staff-username" type="text" value={newUsername} onChange={(e) => setNewUsername(e.target.value)} placeholder="e.g. jane" className={`w-full ${inputBg} border rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-amber-600`} />
+              </div>
+              <div>
+                <label htmlFor="staff-mention-aliases" className={`block text-xs mb-1 ${subText}`}>Mention aliases (optional)</label>
+                <input id="staff-mention-aliases" type="text" value={newMentionAliases} onChange={(e) => setNewMentionAliases(e.target.value)} placeholder="e.g. ops, marketing" aria-describedby="staff-mention-hint" className={`w-full ${inputBg} border rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-amber-600`} />
+              </div>
+            </div>
+            <p id="staff-mention-hint" className={`text-[11px] ${subText}`}>Separate aliases with commas or spaces; ops enables @ops in call notes.</p>
             <div className="grid grid-cols-2 gap-2">
-              <select value={newUserRole} onChange={(e) => setNewUserRole(e.target.value as any)} className={`${inputBg} border rounded-xl px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-2 focus:ring-amber-600`}>
+              <select value={newUserRole} onChange={(e) => setNewUserRole(e.target.value as User['role'])} className={`${inputBg} border rounded-xl px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-2 focus:ring-amber-600`}>
                 <option value="Admin">Admin</option>
                 <option value="Branch Manager">Branch Manager</option>
                 <option value="Sales Agent">Sales Agent</option>
+                <option value="Marketing Manager">Marketing Manager</option>
               </select>
               <select value={newUserBranchId} onChange={(e) => setNewUserBranchId(e.target.value)} className={`${inputBg} border rounded-xl px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-2 focus:ring-amber-600`}>
                 {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}

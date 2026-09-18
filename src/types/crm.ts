@@ -1,7 +1,7 @@
 export type CustomerStage = 'Contact' | 'Lead' | 'Customer' | 'Client';
 export type CustomerType = 'New' | 'Old';
-export type LeadPriority = 'Hot' | 'Warm' | 'Cold';
-export type UserRole = 'Admin' | 'Branch Manager' | 'Sales Agent';
+export type LeadPriority = 'Hot' | 'Warm' | 'Normal' | 'Cold';
+export type UserRole = 'Admin' | 'Branch Manager' | 'Sales Agent' | 'Marketing Manager';
 export type NewCustomerSource = 'Social' | 'Digital Media' | 'Referral' | 'Telegram' | 'Facebook';
 export type OldCustomerSource = 'Previous Buyer' | 'Direct Call' | 'Exhibition' | 'Partner';
 
@@ -18,6 +18,8 @@ export interface User {
   role: UserRole;
   branchId: string;
   email: string;
+  username?: string;
+  mentionAliases?: string[];
 }
 
 export interface BranchReassignmentEntry {
@@ -63,6 +65,10 @@ export interface Customer {
   consecutivePurchaseStreak: Record<string, number>;
   branchReassignmentLog: BranchReassignmentEntry[];
   aiSummary?: AISummary;
+  tinNumber?: string;
+  subCity?: string;
+  businessType?: string;
+  preferredChannel?: string;
 }
 
 export interface ProductRequest {
@@ -108,6 +114,21 @@ export interface CallLog {
   productId?: string;
   unlistedProductName?: string;
   isUnlistedProduct?: boolean;
+  nextFollowUpDate?: string;
+}
+
+export interface FollowUpReminder {
+  id: string;
+  customerId: string;
+  assignedRepId: string;
+  title: string;
+  purpose: string;
+  dueDate: string;
+  status: 'pending' | 'completed';
+  reminderType: 'manual' | 'after_sales' | 'complaint' | 'mention';
+  communicationId?: string;
+  saleId?: string;
+  createdAt: string;
 }
 
 export interface ProductItem {
@@ -126,6 +147,8 @@ export interface ProductSale {
   quantity: number;
   saleDate: string;
   saleAmount: number;
+  salesRepId?: string;
+  status?: 'confirmed' | 'cancelled';
 }
 
 export interface Label {

@@ -2,6 +2,31 @@
 @tailwind components;
 @tailwind utilities;
 
+.toast-popup {
+  animation: toast-popup 5s ease both;
+}
+
+@keyframes toast-popup {
+  0% { opacity: 0; transform: translateY(8px); }
+  6%, 90% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(8px); }
+}
+
+.toast-countdown {
+  transform-origin: left;
+  animation: toast-countdown 5s linear forwards;
+}
+
+@keyframes toast-countdown {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast-popup { animation: none; }
+  .toast-countdown { animation: none; display: none; }
+}
+
 @layer base {
   body {
     font-family: 'Inter', sans-serif;

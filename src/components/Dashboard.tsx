@@ -1,5 +1,5 @@
 import React from 'react';
-import { Customer, CallLog, User, Branch, Notification } from '../types/crm';
+import { Customer, CallLog, User, Branch, Notification, ProductItem } from '../types/crm';
 import { ExternalLink, ArrowUpRight, Bell, Trophy } from 'lucide-react';
 
 interface DashboardProps {
@@ -14,13 +14,14 @@ interface DashboardProps {
   theme: 'light' | 'dark';
   notifications: Notification[];
   unreadCount: number;
+  products: ProductItem[];
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
   customers, callLogs, users, branches,
   selectedBranchId, onOpenIncomingCall,
   onSelectCustomer, setActiveTab, theme,
-  notifications, unreadCount,
+  notifications, unreadCount, products,
 }) => {
   const isDark = theme === 'dark';
 
@@ -53,6 +54,63 @@ export const Dashboard: React.FC<DashboardProps> = ({
     const bRevenue = bCustomers.reduce((sum, c) => sum + c.dealValue, 0);
     return { name: b.name, customers: bCustomers.length, clients: bClients, revenue: bRevenue };
   }).sort((a, b) => b.clients - a.clients);
+
+  const commercialMetrics = React.useMemo(() => {
+    const calls = filteredCallLogs;
+    const prods = products;
+
+    const productInquiries: Record<string, { total: number; outOfStock: number; priceTooHigh: number }> = {};
+    
+    calls.forEach(call => {
+      const prodId = call.productId || call.unlistedProductName;
+      if (!prodId) return;
+      
+      if (!productInquiries[prodId]) {
+        productInquiries[prodId] = { total: 0, outOfStock: 0, priceTooHigh: 0 };
+      }
+      productInquiries[prodId].total += 1;
+      if (call.callStatus === 'Out of Stock') productInquiries[prodId].outOfStock += 1;
+      if (call.remark && /price.*high|expensive|costly/i.test(call.remark)) productInquiries[prodId].priceTooHigh += 1;
+    });
+
+    const highVelocity = prods
+      .filter(p => {
+        const inqCount = (productInquiries[p.id]?.total || 0) + (productInquiries[p.itemName]?.total || 0);
+        return p.stockQuantity > 0 && inqCount > p.stockQuantity;
+      })
+      .map(p => {
+        const inqCount = (productInquiries[p.id]?.total || 0) + (productInquiries[p.itemName]?.total || 0);
+        return {
+          name: p.itemName,
+          inquiries: inqCount,
+          stock: p.stockQuantity,
+          realizable_cash: p.stockQuantity * p.itemPrice,
+        };
+      });
+
+    const priceResistance = prods
+      .map(p => {
+        const inq = productInquiries[p.id] || productInquiries[p.itemName] || { total: 0, outOfStock: 0, priceTooHigh: 0 };
+        const rate = inq.total > 0 ? Math.round((inq.priceTooHigh / inq.total) * 100) : 0;
+        return { name: p.itemName, rate, total: inq.total };
+      })
+      .filter(p => p.total >= 1 && p.rate >= 20);
+
+    const latentDemand = prods
+      .map(p => {
+        const outStockCount = productInquiries[p.id]?.outOfStock || productInquiries[p.itemName]?.outOfStock || (p.stockQuantity === 0 ? 1 : 0);
+        return {
+          name: p.itemName,
+          requests: outStockCount,
+          pending_etb: outStockCount * p.itemPrice,
+        };
+      })
+      .filter(item => item.requests > 0);
+
+    const totalLatentETB = latentDemand.reduce((sum, item) => sum + item.pending_etb, 0);
+
+    return { highVelocity, priceResistance, latentDemand, totalLatentETB };
+  }, [filteredCallLogs, products]);
 
   return (
     <div className="space-y-8 text-zinc-100 max-w-7xl mx-auto pb-12">
@@ -90,6 +148,118 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
           <div className="text-xs text-zinc-500 mt-4 flex items-center gap-1.5 font-medium">
             <span>{clientsCount} of {filteredCustomers.length} leads converted</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Commercial & Pricing Intelligence Module */}
+      <div className="w-full bg-[#141414] border border-neutral-800 rounded-2xl p-5 shadow-xl">
+        <div className="flex items-center justify-between pb-4 border-b border-neutral-800/80">
+          <div className="flex items-center gap-2.5">
+            <span className="text-amber-500 font-bold text-sm tracking-wider uppercase">
+              ⚡ Commercial & Pricing Intelligence
+            </span>
+            <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              REAL-TIME UPDATES
+            </span>
+          </div>
+          <span className="text-xs text-neutral-400">Context: {selectedBranchId === 'all' ? 'All Showrooms' : branches.find(b => b.id === selectedBranchId)?.name}</span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 pt-5">
+          {/* Column 1: High-Velocity Sell-Outs */}
+          <div className="bg-[#181818] border border-neutral-800/80 rounded-xl p-4 flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-bold text-neutral-200">🔥 High-Velocity Sell-Outs</h4>
+                <span className="text-[10px] font-mono text-amber-400 font-semibold bg-amber-500/10 px-1.5 py-0.5 rounded">Demand &gt; Stock</span>
+              </div>
+              <p className="text-[11px] text-neutral-500 mt-1">Items with immediate sell-out probability</p>
+              
+              <div className="mt-4 space-y-3">
+                {commercialMetrics.highVelocity.length === 0 ? (
+                  <div className="text-xs text-neutral-500 italic py-2">No high-velocity sell-out items detected yet.</div>
+                ) : (
+                  commercialMetrics.highVelocity.slice(0, 2).map((item, idx) => (
+                    <div key={idx} className="border-b border-neutral-800/50 pb-2">
+                      <div className="text-xs font-medium text-neutral-200">{item.name}</div>
+                      <div className="flex items-center justify-between text-[11px] text-neutral-400 mt-0.5">
+                        <span>{item.inquiries} inquiries vs {item.stock} in stock</span>
+                        <span className="font-mono text-emerald-400 font-semibold">{item.realizable_cash?.toLocaleString()} ETB</span>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Column 2: Price Resistance Alerts */}
+          <div className="bg-[#181818] border border-neutral-800/80 rounded-xl p-4 flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-bold text-neutral-200">🏷️ Price Resistance Alerts</h4>
+                <span className="text-[10px] font-mono text-rose-400 font-semibold bg-rose-500/10 px-1.5 py-0.5 rounded">&gt;20% Pushback</span>
+              </div>
+              <p className="text-[11px] text-neutral-500 mt-1">Customer feedback claiming price too high</p>
+
+              <div className="mt-4 space-y-3">
+                {commercialMetrics.priceResistance.length === 0 ? (
+                  <div className="text-xs text-neutral-500 italic py-2">No critical price resistance detected across recent calls.</div>
+                ) : (
+                  commercialMetrics.priceResistance.slice(0, 2).map((item, idx) => (
+                    <div key={idx} className="border-b border-neutral-800/50 pb-2">
+                      <div className="text-xs font-medium text-neutral-200">{item.name}</div>
+                      <div className="flex items-center justify-between text-[11px] mt-0.5">
+                        <span className="text-neutral-500">{item.total} calls analyzed</span>
+                        <span className="text-rose-400 font-bold">{item.rate}% claimed high</span>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Column 3: Latent Out-of-Stock Demand */}
+          <div className="bg-[#181818] border border-neutral-800/80 rounded-xl p-4 flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-bold text-neutral-200">📦 Out-of-Stock Latent Demand</h4>
+                <span className="text-[10px] font-mono text-amber-400 font-semibold bg-amber-500/10 px-1.5 py-0.5 rounded">Container Queue</span>
+              </div>
+              <p className="text-[11px] text-neutral-500 mt-1">Pending buyer demand for incoming shipments</p>
+
+              <div className="mt-4 space-y-3">
+                {commercialMetrics.latentDemand.length === 0 ? (
+                  <div className="text-xs text-neutral-500 italic py-2">No pending out-of-stock requests logged.</div>
+                ) : (
+                  commercialMetrics.latentDemand.slice(0, 2).map((item, idx) => (
+                    <div key={idx} className="border-b border-neutral-800/50 pb-2">
+                      <div className="text-xs font-medium text-neutral-200">{item.name}</div>
+                      <div className="flex items-center justify-between text-[11px] text-neutral-400 mt-0.5">
+                        <span>{item.requests} buyers waiting</span>
+                        <span className="font-mono text-amber-400 font-semibold">{item.pending_etb?.toLocaleString()} ETB</span>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            <div className="pt-3 border-t border-neutral-800 flex items-center justify-between text-xs mt-3">
+              <span className="text-neutral-400 font-medium">Total Pending Demand:</span>
+              <span className="font-mono font-bold text-amber-400 text-sm">{commercialMetrics.totalLatentETB?.toLocaleString()} ETB</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-5 pt-4 border-t border-neutral-800/80 flex items-start gap-3 bg-[#181818]/60 p-3.5 rounded-xl">
+          <span className="text-base">✨</span>
+          <div className="text-xs text-neutral-300 leading-relaxed">
+            <span className="font-bold text-amber-400 mr-1.5">Abe's Showroom Tip:</span>
+            Dashboard metrics update in real-time as communication logs are saved. Prioritize top pending inquiries to collect cash immediately before closing time.
           </div>
         </div>
       </div>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Search, Bell, MessageSquare, Sparkles, HelpCircle, PhoneIncoming, Menu, Sun, Moon, CheckCheck } from 'lucide-react';
 import { Branch, User, Notification } from '../types/crm';
 
@@ -16,6 +16,7 @@ interface HeaderProps {
   onOpenNotifications: () => void;
   onOpenIncomingCall: () => void;
   onOpenCommandPalette: () => void;
+  onOpenAiCopilot: () => void;
   unreadNotifCount: number;
   notifications: Notification[];
   onMarkRead: (id: string) => void;
@@ -25,11 +26,65 @@ export const Header: React.FC<HeaderProps> = ({
   branches, selectedBranchId, setSelectedBranchId,
   currentUser, setCurrentUser, users,
   searchTerm, setSearchTerm, theme, onToggleTheme,
-  onOpenNotifications, onOpenIncomingCall, onOpenCommandPalette,
+  onOpenNotifications, onOpenIncomingCall, onOpenCommandPalette, onOpenAiCopilot,
   unreadNotifCount, notifications, onMarkRead,
 }) => {
   const [showNotifDropdown, setShowNotifDropdown] = useState(false);
   const isDark = theme === 'dark';
+  const [now, setNow] = useState(Date.now());
+  const notificationRef = useRef<HTMLDivElement>(null);
+  const remainingTimeRef = useRef(5000);
+  const [isNotificationHovered, setIsNotificationHovered] = useState(false);
+
+  useEffect(() => {
+    remainingTimeRef.current = 5000;
+    if (!showNotifDropdown) setIsNotificationHovered(false);
+  }, [showNotifDropdown]);
+
+  useEffect(() => {
+    if (!showNotifDropdown || isNotificationHovered) return;
+    const startedAt = performance.now();
+    const timer = window.setTimeout(() => setShowNotifDropdown(false), remainingTimeRef.current);
+    return () => {
+      window.clearTimeout(timer);
+      remainingTimeRef.current = Math.max(0, remainingTimeRef.current - (performance.now() - startedAt));
+    };
+  }, [showNotifDropdown, isNotificationHovered]);
+
+  useEffect(() => {
+    if (!showNotifDropdown) return;
+    const handleOutsideClick = (event: MouseEvent) => {
+      if (event.target instanceof Node && !notificationRef.current?.contains(event.target)) {
+        setShowNotifDropdown(false);
+      }
+    };
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setShowNotifDropdown(false);
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [showNotifDropdown]);
+
+  useEffect(() => {
+    if (!showNotifDropdown) return;
+    setNow(Date.now());
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [showNotifDropdown]);
+
+  const getRelativeTime = (dateString: string) => {
+    const timestamp = new Date(dateString).getTime();
+    if (!Number.isFinite(timestamp)) return 'Unknown time';
+    const seconds = Math.max(0, Math.floor((now - timestamp) / 1000));
+    if (seconds < 60) return 'Just now';
+    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+    return `${Math.floor(seconds / 86400)}d ago`;
+  };
 
   const myNotifs = notifications.filter(n => n.recipientUserId === currentUser.id);
   const unread = myNotifs.filter(n => !n.read);
@@ -59,18 +114,18 @@ export const Header: React.FC<HeaderProps> = ({
         <button className="p-2 text-zinc-400 hover:text-white transition-colors relative" title="Messages">
           <MessageSquare className="w-4 h-4" />
         </button>
-        <button className="p-2 text-zinc-400 hover:text-white transition-colors" title="AI Assistant">
-          <Sparkles className="w-4 h-4" />
+        <button onClick={onOpenAiCopilot} className="p-2 text-zinc-400 hover:text-amber-400 transition-colors" title="AI Operational Copilot">
+          <Sparkles className="w-4 h-4 text-amber-500 animate-pulse" />
         </button>
 
         {/* Notification Bell with Dropdown */}
-        <div className="relative">
-          <button onClick={() => setShowNotifDropdown(!showNotifDropdown)} className="p-2 text-zinc-400 hover:text-white transition-colors relative" title="Notifications">
+        <div className="relative" ref={notificationRef}>
+          <button aria-expanded={showNotifDropdown} aria-controls="notification-popover" onClick={() => setShowNotifDropdown(open => !open)} className="p-2 text-zinc-400 hover:text-white transition-colors relative" title="Notifications">
             <Bell className="w-4 h-4" />
             {unreadNotifCount > 0 && <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">{unreadNotifCount}</span>}
           </button>
           {showNotifDropdown && (
-            <div className={`absolute right-0 top-full mt-2 w-80 rounded-xl border shadow-xl z-50 overflow-hidden ${isDark ? 'bg-[#18181b] border-zinc-800/60' : 'bg-white border-slate-200'}`}>
+            <div id="notification-popover" onMouseEnter={() => setIsNotificationHovered(true)} onMouseLeave={() => setIsNotificationHovered(false)} className={`absolute right-0 top-full mt-2 w-80 rounded-xl border shadow-xl z-50 overflow-hidden ${isDark ? 'bg-[#18181b] border-zinc-800/60' : 'bg-white border-slate-200'}`}>
               <div className={`p-3 border-b flex items-center justify-between ${isDark ? 'border-zinc-800/60' : 'border-slate-200'}`}>
                 <span className="text-xs font-bold text-white">Notifications</span>
                 {unread.length > 0 && (
@@ -87,10 +142,13 @@ export const Header: React.FC<HeaderProps> = ({
                     <div key={n.id} onClick={() => onMarkRead(n.id)} className={`px-3 py-3 border-b cursor-pointer hover:bg-zinc-800/40 transition-colors ${n.read ? 'opacity-60' : ''} ${isDark ? 'border-zinc-800/60' : 'border-slate-100'}`}>
                       <p className={`text-xs font-semibold ${n.read ? 'text-zinc-400' : 'text-zinc-100'}`}>{n.title}</p>
                       <p className={`text-[10px] mt-0.5 ${isDark ? 'text-zinc-500' : 'text-slate-500'}`}>{n.message}</p>
-                      <p className={`text-[9px] mt-1 ${isDark ? 'text-zinc-600' : 'text-slate-400'}`}>{new Date(n.createdAt).toLocaleString()}</p>
+                      <time dateTime={n.createdAt} title={n.createdAt} className="block text-[11px] font-mono text-neutral-400 mt-1">{getRelativeTime(n.createdAt)}</time>
                     </div>
                   ))
                 )}
+              </div>
+              <div aria-hidden="true" className="h-0.5 bg-neutral-800 w-full overflow-hidden">
+                <div className="h-full bg-amber-500/60 w-full toast-countdown" style={{ animationPlayState: isNotificationHovered ? 'paused' : 'running' }} />
               </div>
             </div>
           )}

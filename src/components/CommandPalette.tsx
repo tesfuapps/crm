@@ -62,7 +62,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
 
   const navPages = [
     { name: 'Dashboard', tab: 'dashboard', icon: BarChart2 },
-    { name: 'Printing Clients', tab: 'customers', icon: Users },
+    { name: 'Customer Directory', tab: 'customers', icon: Users },
     { name: 'Communications Feed', tab: 'communications', icon: PhoneCall },
     { name: 'Customer Leaderboard', tab: 'customer-leadboard', icon: ShieldCheck },
     { name: 'Reports', tab: 'reports', icon: BarChart2 },
@@ -82,7 +82,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     ...matchedCustomers.map(c => ({
       type: 'Customer',
       title: c.customerName,
-      subtitle: `${c.companyName || 'Print Shop'} • ${c.phoneNumber} (${c.customerStage})`,
+      subtitle: `${c.companyName || 'Individual customer'} • ${c.phoneNumber}`,
       icon: Users,
       select: () => { onClose(); onSelectCustomer(c); }
     })),

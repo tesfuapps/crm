@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Customer, CallLog, Branch, User, ProductItem } from '../types/crm';
 import { PhoneCall, Filter, Search, Calendar, Clock, UserCheck, CheckCircle2, AlertTriangle, ArrowRight, X, Bookmark, Download, Save, Trash2, TrendingUp, Package } from 'lucide-react';
 
@@ -66,6 +67,45 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
   const [newPresetName, setNewPresetName] = useState('');
   const [isActionsOpen, setIsActionsOpen] = useState(false);
   const actionsRef = useRef<HTMLDivElement>(null);
+  const quickPanelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!selectedCallLog) return;
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    quickPanelRef.current?.focus();
+    const animation = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? undefined : quickPanelRef.current?.animate(
+      [{ transform: 'translateX(100%)' }, { transform: 'translateX(0)' }],
+      { duration: 200, easing: 'ease-out' }
+    );
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setSelectedCallLog(null);
+      }
+      if (event.key === 'Tab') {
+        const elements = quickPanelRef.current?.querySelectorAll<HTMLElement>('button:not([disabled]), a[href], [tabindex="0"]');
+        if (!elements?.length) return;
+        const first = elements[0];
+        const last = elements[elements.length - 1];
+        if (event.shiftKey && (document.activeElement === first || document.activeElement === quickPanelRef.current)) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && (document.activeElement === last || document.activeElement === quickPanelRef.current)) {
+          event.preventDefault();
+          first.focus();
+        }
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      animation?.cancel();
+      document.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+      previousFocus?.focus();
+    };
+  }, [selectedCallLog]);
 
   useEffect(() => {
     if (!isActionsOpen) return;
@@ -162,6 +202,21 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
     groupedByDate[dateKey].push(log);
   });
   const sortedDates = Object.keys(groupedByDate).sort((a, b) => b.localeCompare(a));
+  const callCodes = new Map(
+    [...callLogs].sort((a, b) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime() || a.id.localeCompare(b.id))
+      .map((log, index) => [log.id, `TTM-${String(index + 1).padStart(5, '0')}`])
+  );
+  const groupedDailyCalls: Record<string, CallLog[][]> = {};
+  for (const date of sortedDates) {
+    const byCustomer = new Map<string, CallLog[]>();
+    const sorted = [...groupedByDate[date]].sort((a, b) => new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime() || a.id.localeCompare(b.id));
+    for (const log of sorted) {
+      const group = byCustomer.get(log.customerId);
+      if (group) group.push(log);
+      else byCustomer.set(log.customerId, [log]);
+    }
+    groupedDailyCalls[date] = [...byCustomer.values()];
+  }
 
   const statusCounts: Record<string, number> = {
     Sales: 0,
@@ -504,7 +559,7 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
                     )}
                   </div>
                   <span className="text-xs text-neutral-400 font-mono">
-                    {dayLogs.length} calls • {formatDuration(dayTotalSecs)}
+                    {dayLogs.length} calls · {groupedDailyCalls[dateStr].length} customers • {formatDuration(dayTotalSecs)}
                   </span>
                 </div>
 
@@ -522,12 +577,14 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-neutral-800/50">
-                      {dayLogs.map((log, index) => {
+                      {groupedDailyCalls[dateStr].map(group => {
+                        const log = group[0];
+                        const totalDuration = group.reduce((total, call) => total + (call.durationMinutes || 0), 0);
                         const cust = customers.find(c => c.id === log.customerId);
                         const rep = users.find(u => u.id === log.userId);
                         const status = (log as any).callStatus || 'Sales';
                         const isSelected = selectedCallLog?.id === log.id;
-                        const callCode = `TTM-${String(index + 1).padStart(5, '0')}`;
+const callCode = callCodes.get(log.id);
                         const cleanPhone = cust?.phoneNumber ? cust.phoneNumber.replace(/^0/, '') : '';
 
                         return (
@@ -553,13 +610,14 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
                               <span className="text-sm font-medium text-neutral-100 group-hover:text-amber-400 transition-colors">
                                 {cust?.customerName || 'Unknown'}
                               </span>
+                              {group.length > 1 && <span className="ml-1.5 font-mono text-xs font-bold text-amber-400 bg-amber-500/15 border border-amber-500/30 px-1.5 py-0.5 rounded">({group.length})</span>}
                               <p className="text-xs text-neutral-400 mt-0.5">
                                 {cust?.companyName || 'Independent'} • <span className="font-mono text-[11px] text-neutral-500">{cust?.phoneNumber}</span>
                               </p>
                             </td>
                             <td className="py-3 px-4 text-neutral-300 max-w-[220px] truncate">{log.purpose}</td>
                             <td className="px-4 py-3 whitespace-nowrap font-mono text-xs text-neutral-200">
-                              {formatDuration(undefined, log.durationMinutes)}
+                              {formatDuration(undefined, totalDuration)}
                             </td>
                             <td className="py-3 px-4">{getStatusBadge(status)}</td>
                             <td className="py-3 px-4 text-right" onClick={(e) => e.stopPropagation()}>
@@ -621,32 +679,23 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
         const branch = branches.find(b => b.id === selectedCustomer.branchId);
         const status = (selectedCallLog as any).callStatus || 'Sales';
         const product = selectedCallLog.productId ? products.find(p => p.id === selectedCallLog.productId) : null;
-        const callCode = `TTM-${filteredLogs.indexOf(selectedCallLog) + 1}`;
-        const cleanPhone = selectedCustomer.phoneNumber ? selectedCustomer.phoneNumber.replace(/^0/, '') : '';
+        const dayLogs = callLogs.filter(log => log.customerId === selectedCallLog.customerId && log.dateTime.split('T')[0] === selectedCallLog.dateTime.split('T')[0])
+          .sort((a, b) => new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime() || a.id.localeCompare(b.id));
+        const callCode = callCodes.get(selectedCallLog.id);
+        const phoneDigits = selectedCustomer.phoneNumber.replace(/\D/g, '');
+        const cleanPhone = phoneDigits.startsWith('0') ? `251${phoneDigits.slice(1)}` : phoneDigits;
 
-        let productDisplay = selectedCallLog.purpose;
+        let productDisplay = 'None specified';
         if (selectedCallLog.isUnlistedProduct && selectedCallLog.unlistedProductName) {
           productDisplay = `[Unlisted] ${selectedCallLog.unlistedProductName}`;
         } else if (product) {
           productDisplay = product.itemName;
         }
 
-        return (
-          <div className="fixed inset-0 z-50 overflow-hidden bg-zinc-950/60 backdrop-blur-xs flex justify-end">
-            <div className="w-full max-w-md bg-[#161616] border-l border-zinc-800 shadow-2xl p-6 space-y-5 overflow-y-auto animate-slide-in-right">
-              {/* Header */}
-              <div className="flex items-center justify-between pb-4 border-b border-zinc-800">
-                <div>
-                  <h3 className="font-bold text-white text-base">{selectedCustomer.customerName}</h3>
-                  <p className="text-xs text-zinc-400">{selectedCustomer.companyName || 'Print Shop'} • <span className="font-mono text-teal-400 font-semibold">{selectedCustomer.phoneNumber}</span></p>
-                </div>
-                <button onClick={() => setSelectedCallLog(null)} className="text-zinc-400 hover:text-white p-1.5 rounded-lg hover:bg-zinc-800">
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              {/* Call ID & Timestamp + Action Buttons */}
-              <div className="flex items-center justify-between">
+        return createPortal(
+          <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm" onClick={() => setSelectedCallLog(null)}>
+            <div ref={quickPanelRef} role="dialog" aria-modal="true" aria-label="Call details" tabIndex={-1} onClick={event => event.stopPropagation()} className="fixed inset-y-0 right-0 w-full sm:w-[480px] lg:w-[500px] bg-[#141414] border-l border-neutral-800 shadow-2xl flex flex-col overflow-hidden outline-none">
+              <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-b border-neutral-800 bg-[#161616] shrink-0">
                 <div className="flex items-center gap-2">
                   <span className="font-mono text-[11px] font-semibold tracking-wider text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded">
                     {callCode}
@@ -655,15 +704,25 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <a href={`tel:${selectedCustomer.phoneNumber}`} className="p-1.5 bg-neutral-800 hover:bg-neutral-700 rounded text-neutral-300 text-sm" title="Phone Call">📞</a>
-                  <a href={`https://wa.me/251${cleanPhone}`} target="_blank" rel="noopener noreferrer" className="p-1.5 bg-neutral-800 hover:bg-neutral-700 rounded text-green-400 text-sm" title="WhatsApp">💬</a>
+                  <a href={`https://wa.me/${cleanPhone}`} target="_blank" rel="noopener noreferrer" className="p-1.5 bg-neutral-800 hover:bg-neutral-700 rounded text-green-400 text-sm" title="WhatsApp">💬</a>
                   {cleanPhone && (
-                    <a href={`https://t.me/+251${cleanPhone}`} target="_blank" rel="noopener noreferrer" className="p-1.5 bg-neutral-800 hover:bg-neutral-700 rounded text-sky-400 text-sm" title="Telegram">✈️</a>
+                    <a href={`https://t.me/+${cleanPhone}`} target="_blank" rel="noopener noreferrer" className="p-1.5 bg-neutral-800 hover:bg-neutral-700 rounded text-sky-400 text-sm" title="Telegram">✈️</a>
                   )}
+                  <button type="button" aria-label="Close call details" onClick={() => setSelectedCallLog(null)} className="w-8 h-8 ml-1 rounded-lg bg-neutral-900 border border-neutral-800 hover:bg-neutral-800 text-neutral-400 hover:text-white flex items-center justify-center">
+                    <X className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
 
-              {/* Call Metadata Grid */}
-              <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/50 space-y-3">
+              <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-6 py-5 space-y-6 break-words">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <h2 className="text-lg font-bold text-neutral-100">{selectedCustomer.customerName}</h2>
+                    <p className="text-xs text-neutral-400 mt-1">{selectedCustomer.companyName || 'Print Shop'} • <span className="font-mono">{selectedCustomer.phoneNumber}</span></p>
+                  </div>
+                  <div className="shrink-0">{getStatusBadge(status)}</div>
+                </div>
+              <div className="border-t border-neutral-800 pt-4 space-y-3">
                 <div className="font-bold text-amber-300 text-sm pb-2 border-b border-zinc-800">Call Metadata</div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="flex flex-col"><span className="text-[10px] font-bold uppercase text-zinc-500 tracking-wider">Logged By</span><span className="text-xs font-semibold text-zinc-200 mt-0.5">{rep?.name || 'Staff'}</span></div>
@@ -677,16 +736,25 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
                 <div className="flex flex-col pt-2 border-t border-zinc-800"><span className="text-[10px] font-bold uppercase text-zinc-500 tracking-wider">Call Purpose</span><span className="text-xs font-semibold text-zinc-200 mt-0.5">{selectedCallLog.purpose}</span></div>
               </div>
 
-              {/* Full Remarks Block */}
-              <div className="space-y-1.5">
-                <label className="block text-xs font-bold uppercase text-zinc-400">Full Remarks / Notes</label>
-                <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900 text-xs text-zinc-300 leading-relaxed whitespace-pre-wrap">
-                  {selectedCallLog.remark}
-                </div>
-              </div>
+              <section className="space-y-3">
+                <h3 className="text-xs font-bold uppercase text-zinc-400">All calls on {selectedCallLog.dateTime.split('T')[0]} ({dayLogs.length})</h3>
+                <p className="text-xs text-zinc-400">{formatDuration(undefined, dayLogs.reduce((total, log) => total + (log.durationMinutes || 0), 0))} total · Latest first</p>
+                {dayLogs.map(call => (
+                  <article key={call.id} className="p-4 rounded-xl border border-zinc-800 bg-zinc-900 space-y-2 text-xs">
+                    <div className="flex flex-wrap justify-between gap-2">
+                      <span className="font-mono text-amber-400">{callCodes.get(call.id)}</span>
+                      {getStatusBadge(call.callStatus || 'Sales')}
+                    </div>
+                    <p className="text-zinc-400">{new Date(call.dateTime).toLocaleString()} · {users.find(user => user.id === call.userId)?.name || 'Unknown rep'}</p>
+                    <p className="font-mono text-zinc-300">{formatDuration(undefined, call.durationMinutes)}</p>
+                    <p className="text-zinc-200">{call.purpose}</p>
+                    <p className="text-zinc-300 leading-relaxed whitespace-pre-wrap break-words">{call.remark || 'No remarks recorded.'}</p>
+                  </article>
+                ))}
+              </section>
 
-              {/* Footer Action */}
-              <div className="space-y-2.5 pt-3 border-t border-zinc-800">
+              </div>
+              <div className="p-4 border-t border-neutral-800 bg-[#161616] shrink-0">
                 <button
                   onClick={() => { setSelectedCallLog(null); onSelectCustomer(selectedCustomer); }}
                   className="w-full py-3 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-2 shadow-sm transition-colors"
@@ -696,7 +764,8 @@ export const MainCommunicationFeedView: React.FC<MainCommunicationFeedViewProps>
                 </button>
               </div>
             </div>
-          </div>
+          </div>,
+          document.body
         );
       })()}
     </div>

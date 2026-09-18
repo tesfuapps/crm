@@ -150,6 +150,7 @@ export const ProductStoreView: React.FC<ProductStoreViewProps> = ({
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider mb-1 text-zinc-400">Category</label>
                 <select value={itemCategory} onChange={(e) => setItemCategory(e.target.value)} className={`w-full ${inputBg} border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600`}>
+                  <option value="Machines">Machines</option>
                   <option value="Software">Software</option>
                   <option value="Hardware">Hardware</option>
                   <option value="Services">Services</option>

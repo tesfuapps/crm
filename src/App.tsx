@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   INITIAL_BRANCHES, INITIAL_USERS, INITIAL_CUSTOMERS,
   INITIAL_CALL_LOGS, INITIAL_PRODUCTS, INITIAL_SALES,
@@ -6,7 +6,7 @@ import {
 } from './data/mockData';
 import {
   Customer, CallLog, User, Branch, ProductItem, ProductSale,
-  CustomerStage, Notification, Label, FilterPreset, BranchReassignmentEntry,
+  CustomerStage, Notification, Label, FilterPreset, BranchReassignmentEntry, FollowUpReminder,
 } from './types/crm';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
@@ -23,8 +23,17 @@ import { LeaderboardView } from './components/LeaderboardView';
 import { CustomerLeadboardView } from './components/CustomerLeadboardView';
 import { MainCommunicationFeedView } from './components/MainCommunicationFeedView';
 import { CommandPalette } from './components/CommandPalette';
+import { AiCopilotDrawer } from './components/AiCopilotDrawer';
+import { callAutomation, afterSalesReminder, requiresFollowUp } from './services/followUpService';
 
 export function App() {
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('ttm_sidebar_collapsed') === 'true';
+    } catch {
+      return false;
+    }
+  });
   const [branches, setBranches] = useState<Branch[]>(() => {
     const saved = localStorage.getItem('ttm_crm_branches');
     return saved ? JSON.parse(saved) : INITIAL_BRANCHES;
@@ -72,8 +81,17 @@ export function App() {
     const saved = localStorage.getItem('ttm_crm_filter_presets');
     return saved ? JSON.parse(saved) : INITIAL_FILTER_PRESETS;
   });
+  const [reminders, setReminders] = useState<FollowUpReminder[]>(() => {
+    const saved = localStorage.getItem('ttm_crm_reminders');
+    return saved ? JSON.parse(saved) : [];
+  });
+  useEffect(() => {
+    localStorage.setItem('ttm_crm_reminders', JSON.stringify(reminders));
+  }, [reminders]);
+
   const [isIncomingCallOpen, setIsIncomingCallOpen] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+  const [isAiCopilotOpen, setIsAiCopilotOpen] = useState(false);
   const [selectedCustomerForDetail, setSelectedCustomerForDetail] = useState<Customer | null>(null);
   const [toasts, setToasts] = useState<{ id: string; message: string; type: string }[]>([]);
   const [showOnboarding, setShowOnboarding] = useState(!localStorage.getItem('ttm_crm_onboarded'));
@@ -138,11 +156,28 @@ export function App() {
 
   const toggleTheme = () => setTheme(prev => prev === 'dark' ? 'light' : 'dark');
 
-  const addToast = useCallback((message: string, type: string = 'info') => {
-    const id = 'toast_' + Date.now();
-    setToasts(prev => [...prev, { id, message, type }]);
-    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 4000);
+  const toastTimersRef = useRef<Map<string, number>>(new Map());
+
+  useEffect(() => () => {
+    toastTimersRef.current.forEach(timer => window.clearTimeout(timer));
+    toastTimersRef.current.clear();
   }, []);
+
+  const dismissToast = useCallback((id: string) => {
+    const timer = toastTimersRef.current.get(id);
+    if (timer) {
+      window.clearTimeout(timer);
+      toastTimersRef.current.delete(id);
+    }
+    setToasts(prev => prev.filter(t => t.id !== id));
+  }, []);
+
+  const addToast = useCallback((message: string, type: string = 'info') => {
+    const id = 'toast_' + crypto.randomUUID();
+    setToasts(prev => [...prev.slice(-4), { id, message, type }]);
+    const timer = window.setTimeout(() => dismissToast(id), 5000);
+    toastTimersRef.current.set(id, timer);
+  }, [dismissToast]);
 
   // Auto-reassignment logic
   const checkAndTriggerReassignment = useCallback((customer: Customer, saleBranchId: string): Customer | null => {
@@ -223,10 +258,15 @@ export function App() {
 
   // Persist sales to trigger reassignment check
   const handleRecordSale = useCallback((newSale: ProductSale) => {
+    if (sales.some(sale => sale.id === newSale.id)) return;
+    newSale = { ...newSale, salesRepId: newSale.salesRepId || currentUser.id, status: newSale.status || 'confirmed' };
+    const product = products.find(item => item.id === newSale.itemId);
+    const reminder = product ? afterSalesReminder(newSale, product, currentUser.id) : null;
+    if (reminder) setReminders(prev => prev.some(item => item.id === reminder.id) ? prev : [...prev, reminder]);
     const customer = customers.find(c => c.id === newSale.customerId);
-    if (customer) {
+    if (customer && newSale.status !== 'cancelled') {
       const updated = checkAndTriggerReassignment(customer, customer.branchId);
-      if (updated && updated.id !== customer.id) {
+      if (updated) {
         setCustomers(prev => prev.map(c => c.id === customer.id ? updated : c));
       }
     }
@@ -251,9 +291,20 @@ export function App() {
     };
     setNotifications(prev => [notif, ...prev]);
     addToast(`New sale recorded: ${newSale.saleAmount.toLocaleString()} ETB`, 'success');
-  }, [customers, checkAndTriggerReassignment, currentUser.id, addToast]);
+  }, [customers, sales, products, checkAndTriggerReassignment, currentUser.id, addToast]);
 
   const handleSaveCallLog = (newLog: CallLog, updatedCustomer?: Partial<Customer>, newCustomer?: Customer) => {
+    if (callLogs.some(log => log.id === newLog.id)) return;
+    if (requiresFollowUp(newLog.callStatus) && !newLog.nextFollowUpDate) {
+      addToast('A follow-up date is required for this outcome.');
+      return;
+    }
+    const targetCustomer = newCustomer || customers.find(customer => customer.id === newLog.customerId);
+    if (!targetCustomer) return;
+    const automation = callAutomation(newLog, targetCustomer, users);
+    setReminders(prev => [...prev, ...automation.reminders.filter(item => !prev.some(existing => existing.id === item.id))]);
+    setNotifications(prev => [...automation.notifications, ...prev]);
+    updatedCustomer = { ...updatedCustomer, lastContactedDate: newLog.dateTime };
     if (newCustomer) {
       setCustomers(prev => [newCustomer, ...prev]);
       const notif: Notification = {
@@ -285,7 +336,7 @@ export function App() {
       createdAt: new Date().toISOString(),
     };
     setNotifications(prev => [notifLog, ...prev]);
-    addToast('Call log saved successfully', 'success');
+    addToast(`Call Logged — ${cust?.customerName || 'Client'}: ${newLog.callStatus || newLog.purpose} (${newLog.durationMinutes}m)`, 'success');
   };
 
   const handleAddCustomer = (newCust: Customer) => {
@@ -317,10 +368,21 @@ export function App() {
     setNotifications(prev => [notif, ...prev]);
   };
 
+  const handleUpdateReminder = (updated: FollowUpReminder) => {
+    const existing = reminders.find(reminder => reminder.id === updated.id);
+    if (!existing) return;
+    const next = reminders.map(reminder => reminder.id === updated.id ? { ...reminder, dueDate: updated.dueDate, status: updated.status } : reminder);
+    setReminders(next);
+    const nextDue = next.filter(reminder => reminder.customerId === existing.customerId && reminder.status === 'pending').map(reminder => reminder.dueDate).sort()[0];
+    setCustomers(prev => prev.map(customer => customer.id === existing.customerId ? { ...customer, nextFollowUpDate: nextDue } : customer));
+    addToast(updated.status === 'completed' ? 'Follow-up completed' : 'Follow-up rescheduled', 'success');
+  };
+
   const handleDeleteCustomer = (customerId: string) => {
     const cust = customers.find(c => c.id === customerId);
     setCustomers(prev => prev.filter(c => c.id !== customerId));
     setCallLogs(prev => prev.filter(cl => cl.customerId !== customerId));
+    setReminders(prev => prev.filter(reminder => reminder.customerId !== customerId));
     if (selectedCustomerForDetail?.id === customerId) setSelectedCustomerForDetail(null);
     const notif: Notification = {
       id: 'n_' + Date.now(),
@@ -378,9 +440,9 @@ export function App() {
 
   return (
     <div className="min-h-screen flex bg-[#09090b] text-zinc-100">
-      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} onCollapsedChange={setSidebarCollapsed} />
 
-      <div className="flex-1 ml-64 flex flex-col min-h-screen bg-[#09090b]">
+      <div className={`flex-1 flex flex-col min-h-screen bg-[#09090b] transition-all duration-300 ease-in-out ${sidebarCollapsed ? 'ml-18' : 'ml-64'}`}>
         <Header
           branches={branches} selectedBranchId={selectedBranchId} setSelectedBranchId={setSelectedBranchId}
           currentUser={currentUser} setCurrentUser={setCurrentUser} users={users}
@@ -388,6 +450,7 @@ export function App() {
           onOpenNotifications={() => setActiveTab('dashboard')}
           onOpenIncomingCall={() => setIsIncomingCallOpen(true)}
           onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
+          onOpenAiCopilot={() => setIsAiCopilotOpen(true)}
           unreadNotifCount={unreadNotifCount}
           notifications={notifications}
           onMarkRead={markNotificationRead}
@@ -395,13 +458,13 @@ export function App() {
 
         <main className="flex-1 p-8 mt-14 overflow-y-auto bg-[#09090b]">
           {activeTab === 'dashboard' && (
-            <Dashboard customers={customers} callLogs={callLogs} users={users} branches={branches}
-              selectedBranchId={selectedBranchId} onOpenIncomingCall={() => setIsIncomingCallOpen(true)}
-              onSelectCustomer={handleSelectCustomer} setActiveTab={setActiveTab} theme={theme}
-              notifications={notifications} unreadCount={unreadNotifCount} />
+             <Dashboard customers={customers} callLogs={callLogs} users={users} branches={branches}
+               selectedBranchId={selectedBranchId} onOpenIncomingCall={() => setIsIncomingCallOpen(true)}
+               onSelectCustomer={handleSelectCustomer} setActiveTab={setActiveTab} theme={theme}
+               notifications={notifications} unreadCount={unreadNotifCount} products={products} />
           )}
           {activeTab === 'customers' && (
-            <CustomerListView customers={customers} branches={branches} users={users} callLogs={callLogs}
+            <CustomerListView customers={customers} branches={branches} users={users} callLogs={callLogs} sales={sales}
               selectedBranchId={selectedBranchId} products={products} theme={theme}
               onAddCustomer={handleAddCustomer} onUpdateCustomer={handleUpdateCustomer}
               onDeleteCustomer={handleDeleteCustomer} onOpenLogCallForCustomer={() => setIsIncomingCallOpen(true)}
@@ -422,7 +485,8 @@ export function App() {
           {activeTab === 'calendar' && (
             <CalendarFollowUpsView customers={customers} branches={branches} users={users} selectedBranchId={selectedBranchId}
               theme={theme} onSelectCustomer={handleSelectCustomer} onOpenLogCall={() => setIsIncomingCallOpen(true)}
-              onUpdateCustomer={handleUpdateCustomer} />
+              onUpdateCustomer={handleUpdateCustomer}
+              reminders={reminders} onUpdateReminder={handleUpdateReminder} />
           )}
           {activeTab === 'leaderboard' && (
             <LeaderboardView customers={customers} callLogs={callLogs} users={users} branches={branches}
@@ -453,7 +517,7 @@ export function App() {
       </div>
 
       <IncomingCallWidget isOpen={isIncomingCallOpen} onClose={() => setIsIncomingCallOpen(false)}
-        customers={customers} currentUser={currentUser} theme={theme}
+        customers={customers} branches={branches} currentUser={currentUser} theme={theme}
         onSaveCallLog={handleSaveCallLog} onSelectCustomer={handleSelectCustomer} products={products} />
 
       <CommandPalette
@@ -463,18 +527,33 @@ export function App() {
         setActiveTab={setActiveTab} onSelectCustomer={handleSelectCustomer}
         onOpenIncomingCall={() => setIsIncomingCallOpen(true)} />
 
+      <AiCopilotDrawer
+        isOpen={isAiCopilotOpen}
+        onClose={() => setIsAiCopilotOpen(false)}
+        customers={customers}
+        callLogs={callLogs}
+        products={products}
+        branches={branches}
+        currentUser={currentUser}
+      />
+
       {/* Toast Notifications */}
-      <div className="fixed bottom-6 right-6 z-50 space-y-2">
+      <div className="fixed bottom-6 right-4 sm:right-6 z-[150] w-[calc(100%-2rem)] max-w-sm space-y-2 pointer-events-none" role="status" aria-live="polite" aria-relevant="additions">
         {showOnboarding && (
           <div className="px-4 py-3 rounded-lg border shadow-lg text-sm font-medium animate-fade-in bg-amber-950/90 border-amber-700 text-amber-200">
             🎉 Welcome to TTM CRM! Explore branches, manage customers, and track your pipeline.
           </div>
         )}
         {toasts.map(t => (
-          <div key={t.id} className={`px-4 py-3 rounded-lg border shadow-lg text-sm font-medium animate-fade-in ${
-            t.type === 'success' ? 'bg-emerald-950/90 border-emerald-700 text-emerald-200' :
-            'bg-zinc-900 border-zinc-700 text-zinc-200'
-          }`}>{t.message}</div>
+          <div key={t.id} className="toast-popup pointer-events-auto relative overflow-hidden flex items-start gap-3 p-4 rounded-xl border border-neutral-800 bg-[#181818] shadow-2xl">
+            <div className="flex-1 min-w-0">
+              <h4 className="text-xs font-semibold text-neutral-100">{t.type === 'success' ? 'Success' : 'Notification'}</h4>
+              <p className="text-xs text-neutral-300 mt-0.5 break-words">{t.message}</p>
+              <span className="text-[10px] text-neutral-500 mt-1 block">Just now</span>
+            </div>
+            <button type="button" onClick={() => dismissToast(t.id)} aria-label="Dismiss notification" className="text-neutral-500 hover:text-neutral-300 px-1">×</button>
+            <div aria-hidden="true" className="toast-countdown absolute bottom-0 left-0 h-0.5 bg-amber-500 w-full" />
+          </div>
         ))}
       </div>
     </div>

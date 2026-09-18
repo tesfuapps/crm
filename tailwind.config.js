@@ -10,6 +10,9 @@ export default {
         teal: {
           850: '#0B5E57',
         }
+      },
+      spacing: {
+        18: '4.5rem',
       }
     },
   },
