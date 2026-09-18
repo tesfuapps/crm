@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sparkles, X, Send, Bot, User as UserIcon, RefreshCw, AlertTriangle, Package, Calendar, FileText } from 'lucide-react';
+import { Sparkles, X, Send, Bot, User as UserIcon, RefreshCw, AlertTriangle, Package, Calendar, FileText, Copy, Check } from 'lucide-react';
 import { Customer, CallLog, ProductItem, Branch, User } from '../types/crm';
 import { askAISalesAdvisor, getGeminiApiKey } from '../services/aiService';
 
@@ -18,6 +18,8 @@ interface Message {
   sender: 'user' | 'ai';
   text: string;
   time: string;
+  actionChips?: string[];
+  showCopy?: boolean;
 }
 
 export const AiCopilotDrawer: React.FC<AiCopilotDrawerProps> = ({
@@ -31,18 +33,27 @@ export const AiCopilotDrawer: React.FC<AiCopilotDrawerProps> = ({
 }) => {
   const [inputQuery, setInputQuery] = useState('');
   const [loading, setLoading] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 'm1',
       sender: 'ai',
       text: `Hello ${currentUser.name}! I am your TTM Operations Copilot. How can I assist with showroom rollups, client follow-ups, or inventory demand today?`,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      actionChips: ["📊 Today's Rollup", "🚨 Open Complaints", "✍️ Draft Follow-Up"],
     },
   ]);
 
   if (!isOpen) return null;
 
   const apiKeyConfigured = Boolean(getGeminiApiKey());
+
+  const handleCopy = (text: string, id: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
 
   const handleSend = async (queryText?: string) => {
     const q = queryText || inputQuery;
@@ -61,6 +72,7 @@ export const AiCopilotDrawer: React.FC<AiCopilotDrawerProps> = ({
 
     try {
       let responseText = '';
+      let chips: string[] = [];
       const lower = q.toLowerCase();
 
       if (lower.includes('rollup') || lower.includes('summary') || lower.includes('today')) {
@@ -76,6 +88,7 @@ export const AiCopilotDrawer: React.FC<AiCopilotDrawerProps> = ({
           `- Service / Support: ${serviceCount}\n` +
           `- Complaints / Issues: ${complaintCount}\n` +
           `- Active Showrooms: ${branches.map(b => b.name).join(', ')}`;
+        chips = ["🚨 Review Open Complaints", "📦 Out-of-Stock Demand"];
       } else if (lower.includes('complaint') || lower.includes('issue')) {
         const complaints = callLogs.filter(c => c.callStatus === 'Complaint');
         if (complaints.length === 0) {
@@ -87,18 +100,22 @@ export const AiCopilotDrawer: React.FC<AiCopilotDrawerProps> = ({
               return `${i + 1}. **${cust?.customerName || 'Client'}** (${cust?.phoneNumber || 'N/A'}): "${c.remark}"`;
             }).join('\n');
         }
+        chips = ["📊 Today's Rollup", "✍️ Draft Follow-Up"];
       } else if (lower.includes('out-of-stock') || lower.includes('stock') || lower.includes('demand')) {
         const outOfStockCalls = callLogs.filter(c => c.callStatus === 'Out of Stock');
         responseText = `📦 **Out-of-Stock & High-Demand Inquiry Report**:\n` +
           `- Total Out-of-Stock inquiry logs: ${outOfStockCalls.length}\n` +
           `- Top Requested Catalog Items: Epson L805 Printer, Double Mug Press, A3 Sublimation Paper.\n` +
           `💡 *Recommendation*: Procurement Manager advised to check container import pipeline for these items.`;
+        chips = ["📊 Today's Rollup", "✍️ Draft Follow-Up"];
       } else if (lower.includes('follow-up') || lower.includes('telegram') || lower.includes('draft')) {
         responseText = `✍️ **Telegram Follow-Up Draft (Amharic / English)**:\n\n` +
-          `"ሰላም! ከTTM CRM እየደወልን ነው። ስለ 5-in-1 Combo Heat Press ማሽናችን የጠየቁትን መረጃ አስመልክቶ ዛሬ确认 ካደረጉ 5% የዋጋ ቅናሽ እናደርግልዎታለን። ቦሌ ወይም መገናኛ ማሳያ ክፍል ጎብኝተው ማየት ይችላሉ።\n\n` +
+          `"ሰላም! ከTTM CRM እየደወልን ነው። ስለ 5-in-1 Combo Heat Press ማሽናችን የጠየቁትን መረጃ አስመልክቶ ዛሬ 确认 ካደረጉ 5% የዋጋ ቅናሽ እናደርግልዎታለን። ቦሌ ወይም መገናኛ ማሳያ ክፍል ጎብኝተው ማየት ይችላሉ።\n\n` +
           `Hello! Following up from TTM CRM regarding your inquiry on the 5-in-1 Combo Heat Press. Confirm your order today to enjoy a 5% special showroom discount!"`;
+        chips = ["📊 Today's Rollup", "🚨 Review Open Complaints"];
       } else {
         responseText = await askAISalesAdvisor(q, customers);
+        chips = ["📊 Today's Rollup", "✍️ Draft Follow-Up"];
       }
 
       const aiMsg: Message = {
@@ -106,6 +123,7 @@ export const AiCopilotDrawer: React.FC<AiCopilotDrawerProps> = ({
         sender: 'ai',
         text: responseText,
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        actionChips: chips,
       };
       setMessages(prev => [...prev, aiMsg]);
     } catch (err) {
@@ -132,7 +150,7 @@ export const AiCopilotDrawer: React.FC<AiCopilotDrawerProps> = ({
             </div>
             <div>
               <h3 className="font-bold text-sm text-neutral-100">TTM Operational Copilot</h3>
-              <p className="text-[10px] text-neutral-400">Gemini 3.6 Flash • Printing Showroom AI</p>
+              <p className="text-[10px] text-neutral-400">Gemini 3.6 Flash • Interactive AI Actions</p>
             </div>
           </div>
           <button
@@ -147,28 +165,28 @@ export const AiCopilotDrawer: React.FC<AiCopilotDrawerProps> = ({
         <div className="p-3 bg-[#111111] border-b border-neutral-800 grid grid-cols-2 gap-2">
           <button
             onClick={() => handleSend("📊 Today's Showroom Rollup")}
-            className="p-2 bg-[#1a1a1a] hover:bg-[#222222] border border-neutral-800 rounded-lg text-left text-xs text-neutral-300 hover:text-amber-400 transition-colors flex items-center gap-2"
+            className="p-2 bg-[#1a1a1a] hover:bg-[#222222] border border-neutral-800 rounded-lg text-left text-xs text-neutral-300 hover:text-amber-400 transition-colors flex items-center gap-2 cursor-pointer"
           >
             <Calendar className="w-3.5 h-3.5 text-amber-500 shrink-0" />
             <span className="truncate">Today's Rollup</span>
           </button>
           <button
             onClick={() => handleSend("🚨 Review Open Complaints")}
-            className="p-2 bg-[#1a1a1a] hover:bg-[#222222] border border-neutral-800 rounded-lg text-left text-xs text-neutral-300 hover:text-amber-400 transition-colors flex items-center gap-2"
+            className="p-2 bg-[#1a1a1a] hover:bg-[#222222] border border-neutral-800 rounded-lg text-left text-xs text-neutral-300 hover:text-amber-400 transition-colors flex items-center gap-2 cursor-pointer"
           >
             <AlertTriangle className="w-3.5 h-3.5 text-red-400 shrink-0" />
             <span className="truncate">Open Complaints</span>
           </button>
           <button
             onClick={() => handleSend("📦 Out-of-Stock Demand Summary")}
-            className="p-2 bg-[#1a1a1a] hover:bg-[#222222] border border-neutral-800 rounded-lg text-left text-xs text-neutral-300 hover:text-amber-400 transition-colors flex items-center gap-2"
+            className="p-2 bg-[#1a1a1a] hover:bg-[#222222] border border-neutral-800 rounded-lg text-left text-xs text-neutral-300 hover:text-amber-400 transition-colors flex items-center gap-2 cursor-pointer"
           >
             <Package className="w-3.5 h-3.5 text-blue-400 shrink-0" />
             <span className="truncate">Out-of-Stock Demand</span>
           </button>
           <button
             onClick={() => handleSend("✍️ Draft Client Follow-Up")}
-            className="p-2 bg-[#1a1a1a] hover:bg-[#222222] border border-neutral-800 rounded-lg text-left text-xs text-neutral-300 hover:text-amber-400 transition-colors flex items-center gap-2"
+            className="p-2 bg-[#1a1a1a] hover:bg-[#222222] border border-neutral-800 rounded-lg text-left text-xs text-neutral-300 hover:text-amber-400 transition-colors flex items-center gap-2 cursor-pointer"
           >
             <FileText className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
             <span className="truncate">Telegram Follow-Up</span>
@@ -193,17 +211,49 @@ export const AiCopilotDrawer: React.FC<AiCopilotDrawerProps> = ({
                   <Bot className="w-3.5 h-3.5" />
                 </div>
               )}
-              <div
-                className={`max-w-[80%] rounded-2xl p-3 text-xs leading-relaxed whitespace-pre-wrap ${
-                  msg.sender === 'user'
-                    ? 'bg-amber-500 text-black font-medium rounded-br-xs'
-                    : 'bg-[#1c1c1c] border border-neutral-800 text-neutral-200 rounded-bl-xs'
-                }`}
-              >
-                {msg.text}
-                <div className={`text-[9px] mt-1 text-right font-mono ${msg.sender === 'user' ? 'text-black/60' : 'text-neutral-500'}`}>
-                  {msg.time}
+              <div className="max-w-[85%] space-y-2">
+                <div
+                  className={`rounded-2xl p-3 text-xs leading-relaxed whitespace-pre-wrap relative group ${
+                    msg.sender === 'user'
+                      ? 'bg-amber-500 text-black font-medium rounded-br-xs'
+                      : 'bg-[#1c1c1c] border border-neutral-800 text-neutral-200 rounded-bl-xs'
+                  }`}
+                >
+                  {msg.text}
+                  {msg.sender === 'ai' && (
+                    <div className="mt-2 pt-2 border-t border-neutral-800 flex items-center justify-between">
+                      <span className="text-[9px] font-mono text-neutral-500">{msg.time}</span>
+                      <button
+                        onClick={() => handleCopy(msg.text, msg.id)}
+                        className="flex items-center gap-1 text-[10px] bg-neutral-800 hover:bg-neutral-700 text-amber-400 px-2 py-1 rounded-md transition-colors cursor-pointer"
+                      >
+                        {copiedId === msg.id ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                        <span>{copiedId === msg.id ? 'Copied!' : 'Copy'}</span>
+                      </button>
+                    </div>
+                  )}
+                  {msg.sender === 'user' && (
+                    <div className="text-[9px] mt-1 text-right font-mono text-black/60">
+                      {msg.time}
+                    </div>
+                  )}
                 </div>
+
+                {/* Action Chips */}
+                {msg.actionChips && msg.actionChips.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {msg.actionChips.map((chip, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => handleSend(chip)}
+                        className="text-[10px] font-medium bg-[#222222] hover:bg-amber-500/20 text-neutral-300 hover:text-amber-400 border border-neutral-700 hover:border-amber-500/40 px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1"
+                      >
+                        <span>⚡</span>
+                        <span>{chip}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
               {msg.sender === 'user' && (
                 <div className="w-7 h-7 rounded-lg bg-zinc-800 text-zinc-300 flex items-center justify-center shrink-0 mt-0.5">
