@@ -65,9 +65,10 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
     if (!container) return;
 
     try {
+      const filter = (node: HTMLElement) => !node.classList?.contains('no-export');
       const dataUrl = format === 'jpeg'
-        ? await toJpeg(container, { backgroundColor: '#141414', quality: 0.95, pixelRatio: 2 })
-        : await toPng(container, { backgroundColor: '#141414', quality: 0.95, pixelRatio: 2 });
+        ? await toJpeg(container, { backgroundColor: '#141414', quality: 0.95, pixelRatio: 2, filter })
+        : await toPng(container, { backgroundColor: '#141414', quality: 0.95, pixelRatio: 2, filter });
 
       const link = document.createElement('a');
       link.download = `${filename}.${format === 'jpeg' ? 'jpg' : 'png'}`;
@@ -223,7 +224,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
         <div id="chart-branch-revenue" className={`p-6 rounded-2xl border ${cardBg} space-y-4`} ref={barChartRef}>
           <div className="flex items-center justify-between">
             <h3 className={`font-bold flex items-center gap-2 ${cardText}`}><Building2 className="w-4 h-4 text-amber-400" /> <span>Branch Revenue Comparison (ETB)</span></h3>
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 no-export">
               <button onClick={() => downloadChart('chart-branch-revenue', 'png', 'TTM_Branch_Revenue')} className="px-2 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded text-[11px] font-semibold flex items-center gap-1 cursor-pointer" title="Download PNG">
                 <FileImage className="w-3 h-3 text-sky-400" /> PNG
               </button>
@@ -251,7 +252,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
         <div id="chart-lead-source" className={`p-6 rounded-2xl border ${cardBg} space-y-4`} ref={pieChartRef}>
           <div className="flex items-center justify-between">
             <h3 className={`font-bold flex items-center gap-2 ${cardText}`}><TrendingUp className="w-4 h-4 text-amber-400" /> <span>Lead Source Distribution</span></h3>
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 no-export">
               <button onClick={() => downloadChart('chart-lead-source', 'png', 'TTM_Lead_Sources')} className="px-2 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded text-[11px] font-semibold flex items-center gap-1 cursor-pointer" title="Download PNG">
                 <FileImage className="w-3 h-3 text-sky-400" /> PNG
               </button>
