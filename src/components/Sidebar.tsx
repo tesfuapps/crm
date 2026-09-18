@@ -63,15 +63,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onCol
         isCollapsed ? 'w-18' : 'w-64'
       }`}
     >
-      <div className={`p-4 border-b border-zinc-800/60 flex items-center ${isCollapsed ? 'justify-center' : 'justify-between gap-2'}`}>
-        {!isCollapsed && (
-          <div className="flex items-center gap-2.5 overflow-hidden min-w-0">
-            <div className="w-7 h-7 rounded-lg bg-amber-500 flex items-center justify-center font-bold text-black text-xs shrink-0">
-              TTM
-            </div>
-            <span className="font-bold text-white tracking-wide text-sm whitespace-nowrap">TTM CRM</span>
+      <div className={`h-14 border-b border-zinc-800/60 flex items-center ${isCollapsed ? 'justify-between px-2.5' : 'px-4 justify-between gap-2'}`}>
+        <div className="flex items-center gap-2.5 overflow-hidden min-w-0">
+          <div className="w-7 h-7 rounded-lg bg-amber-500 flex items-center justify-center font-bold text-black text-xs shrink-0">
+            TTM
           </div>
-        )}
+          {!isCollapsed && <span className="font-bold text-white tracking-wide text-sm whitespace-nowrap">TTM CRM</span>}
+        </div>
         <button
           onClick={toggleSidebar}
           title={isCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}

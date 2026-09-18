@@ -90,7 +90,7 @@ export const Header: React.FC<HeaderProps> = ({
   const unread = myNotifs.filter(n => !n.read);
 
   return (
-    <header className="h-14 bg-[#09090b] border-b border-zinc-800/60 fixed top-0 right-0 left-64 z-20 px-6 flex items-center justify-between text-zinc-300">
+    <header className="h-14 bg-[#09090b] border-b border-zinc-800/60 shrink-0 z-20 px-6 flex items-center justify-between text-zinc-300">
       <div className="flex items-center gap-4 w-96">
         <div className="relative w-full">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 pointer-events-none" />

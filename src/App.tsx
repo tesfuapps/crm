@@ -450,10 +450,10 @@ export function App() {
   const handleDeleteLabel = (labelId: string) => { setLabels(prev => prev.filter(l => l.id !== labelId)); };
 
   return (
-    <div className="min-h-screen flex bg-[#09090b] text-zinc-100">
+    <div className="h-screen w-screen overflow-hidden flex bg-[#09090b] text-zinc-100">
       <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} onCollapsedChange={setSidebarCollapsed} />
 
-      <div className={`flex-1 flex flex-col min-h-screen bg-[#09090b] transition-all duration-300 ease-in-out ${sidebarCollapsed ? 'ml-18' : 'ml-64'}`}>
+      <div className={`flex-1 flex flex-col h-full overflow-hidden bg-[#09090b] transition-all duration-300 ease-in-out ${sidebarCollapsed ? 'ml-18' : 'ml-64'}`}>
         <Header
           branches={branches} selectedBranchId={selectedBranchId} setSelectedBranchId={setSelectedBranchId}
           currentUser={currentUser} setCurrentUser={setCurrentUser} users={users}
@@ -467,7 +467,7 @@ export function App() {
           onMarkRead={markNotificationRead}
         />
 
-        <main className="flex-1 p-8 mt-14 overflow-y-auto bg-[#09090b]">
+        <main className="flex-1 p-8 overflow-y-auto bg-[#09090b]">
           {activeTab === 'dashboard' && (
              <Dashboard customers={customers} callLogs={callLogs} users={users} branches={branches}
                selectedBranchId={selectedBranchId} onOpenIncomingCall={() => setIsIncomingCallOpen(true)}
