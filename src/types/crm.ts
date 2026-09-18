@@ -115,6 +115,9 @@ export interface CallLog {
   unlistedProductName?: string;
   isUnlistedProduct?: boolean;
   nextFollowUpDate?: string;
+  priceFeedback?: 'accepted' | 'too_high' | 'competitor_cheaper' | string;
+  isResolved?: boolean;
+  resolutionRemark?: string;
 }
 
 export interface FollowUpReminder {

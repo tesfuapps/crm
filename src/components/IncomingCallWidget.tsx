@@ -47,6 +47,7 @@ export const IncomingCallWidget: React.FC<IncomingCallWidgetProps> = ({
   const [unlistedProductName, setUnlistedProductName] = useState('');
   const [nextFollowUpDate, setNextFollowUpDate] = useState('');
   const [dateError, setDateError] = useState('');
+  const [priceFeedback, setPriceFeedback] = useState<string>('accepted');
 
   // New customer fields if not found
   const [newName, setNewName] = useState('');
@@ -100,6 +101,7 @@ export const IncomingCallWidget: React.FC<IncomingCallWidgetProps> = ({
       productId: selectedProductId !== 'none' && selectedProductId !== 'unlisted' ? selectedProductId : undefined,
       isUnlistedProduct: selectedProductId === 'unlisted',
       unlistedProductName: selectedProductId === 'unlisted' ? unlistedProductName : undefined,
+      priceFeedback: outcome === 'Evaluation' ? (priceFeedback as any) : undefined,
     };
 
     const customerUpdate: Partial<Customer> = needsFollowUp ? { nextFollowUpDate: nextFollowUpDate.trim() } : {};
@@ -157,6 +159,7 @@ export const IncomingCallWidget: React.FC<IncomingCallWidgetProps> = ({
       productId: selectedProductId !== 'none' && selectedProductId !== 'unlisted' ? selectedProductId : undefined,
       isUnlistedProduct: selectedProductId === 'unlisted',
       unlistedProductName: selectedProductId === 'unlisted' ? unlistedProductName : undefined,
+      priceFeedback: outcome === 'Evaluation' ? (priceFeedback as any) : undefined,
     };
 
     onSaveCallLog(newLog, needsFollowUp ? { nextFollowUpDate: nextFollowUpDate.trim() } : undefined, newCust);
@@ -325,6 +328,34 @@ export const IncomingCallWidget: React.FC<IncomingCallWidgetProps> = ({
                       </div>
                     )}
 
+                    {outcome === 'Evaluation' && (
+                      <div className="space-y-1.5 pt-1">
+                        <label className={`block text-[11px] font-bold uppercase mb-1 ${isDark ? 'text-neutral-300' : 'text-slate-700'}`}>
+                          Customer Price Reaction (Evaluation)
+                        </label>
+                        <div className="grid grid-cols-3 gap-2">
+                          {[
+                            { key: 'accepted', label: '🟢 Fair / Accepted' },
+                            { key: 'too_high', label: '🔴 Claimed Too High' },
+                            { key: 'competitor_cheaper', label: '🟡 Cheaper Elsewhere' }
+                          ].map((item) => (
+                            <button
+                              key={item.key}
+                              type="button"
+                              onClick={() => setPriceFeedback(item.key)}
+                              className={`py-2 px-2 text-xs rounded-lg border font-medium transition-all cursor-pointer ${
+                                priceFeedback === item.key
+                                  ? 'bg-amber-500/20 border-amber-500 text-amber-300 font-bold shadow-sm'
+                                  : 'bg-[#101010] border-neutral-700 text-neutral-400 hover:border-neutral-600 hover:text-neutral-200'
+                              }`}
+                            >
+                              {item.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     <div>
                       <label className={`block text-[11px] font-bold uppercase mb-1 ${isDark ? 'text-neutral-300' : 'text-slate-700'}`}>Call Remarks / Notes *</label>
                       <p className={`mb-1 text-[10px] ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>Mention a teammate with @username or a configured alias, e.g. @ops.</p>
@@ -467,6 +498,34 @@ export const IncomingCallWidget: React.FC<IncomingCallWidgetProps> = ({
                           className={`${inputClasses} font-medium`}
                         />
                         {dateError && <p id="call-follow-up-error" role="alert" className="mt-1 text-xs text-red-500">{dateError}</p>}
+                      </div>
+                    )}
+
+                    {outcome === 'Evaluation' && (
+                      <div className="space-y-1.5 pt-1">
+                        <label className={`block text-[11px] font-bold uppercase mb-1 ${isDark ? 'text-neutral-300' : 'text-slate-700'}`}>
+                          Customer Price Reaction (Evaluation)
+                        </label>
+                        <div className="grid grid-cols-3 gap-2">
+                          {[
+                            { key: 'accepted', label: '🟢 Fair / Accepted' },
+                            { key: 'too_high', label: '🔴 Claimed Too High' },
+                            { key: 'competitor_cheaper', label: '🟡 Cheaper Elsewhere' }
+                          ].map((item) => (
+                            <button
+                              key={item.key}
+                              type="button"
+                              onClick={() => setPriceFeedback(item.key)}
+                              className={`py-2 px-2 text-xs rounded-lg border font-medium transition-all cursor-pointer ${
+                                priceFeedback === item.key
+                                  ? 'bg-amber-500/20 border-amber-500 text-amber-300 font-bold shadow-sm'
+                                  : 'bg-[#101010] border-neutral-700 text-neutral-400 hover:border-neutral-600 hover:text-neutral-200'
+                              }`}
+                            >
+                              {item.label}
+                            </button>
+                          ))}
+                        </div>
                       </div>
                     )}
 
