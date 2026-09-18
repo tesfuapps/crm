@@ -24,6 +24,7 @@ import { CustomerLeadboardView } from './components/CustomerLeadboardView';
 import { MainCommunicationFeedView } from './components/MainCommunicationFeedView';
 import { CommandPalette } from './components/CommandPalette';
 import { AiCopilotDrawer } from './components/AiCopilotDrawer';
+import { SystemHelpModal } from './components/SystemHelpModal';
 import { callAutomation, afterSalesReminder, requiresFollowUp } from './services/followUpService';
 
 const CURRENT_SCHEMA_VERSION = 4;
@@ -103,6 +104,7 @@ export function App() {
   const [isIncomingCallOpen, setIsIncomingCallOpen] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [isAiCopilotOpen, setIsAiCopilotOpen] = useState(false);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [selectedCustomerForDetail, setSelectedCustomerForDetail] = useState<Customer | null>(null);
   const [toasts, setToasts] = useState<{ id: string; message: string; type: string }[]>([]);
   const [showOnboarding, setShowOnboarding] = useState(!localStorage.getItem('ttm_crm_onboarded'));
@@ -462,6 +464,7 @@ export function App() {
           onOpenIncomingCall={() => setIsIncomingCallOpen(true)}
           onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
           onOpenAiCopilot={() => setIsAiCopilotOpen(true)}
+          onOpenHelp={() => setIsHelpOpen(true)}
           unreadNotifCount={unreadNotifCount}
           notifications={notifications}
           onMarkRead={markNotificationRead}
@@ -546,6 +549,11 @@ export function App() {
         products={products}
         branches={branches}
         currentUser={currentUser}
+      />
+
+      <SystemHelpModal
+        isOpen={isHelpOpen}
+        onClose={() => setIsHelpOpen(false)}
       />
 
       {/* Toast Notifications */}

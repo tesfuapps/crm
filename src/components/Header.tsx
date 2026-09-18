@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Bell, MessageSquare, Sparkles, HelpCircle, PhoneIncoming, Menu, Sun, Moon, CheckCheck } from 'lucide-react';
+import { Search, Bell, Sparkles, HelpCircle, PhoneIncoming, Menu, Sun, Moon, CheckCheck } from 'lucide-react';
 import { Branch, User, Notification } from '../types/crm';
 
 interface HeaderProps {
@@ -17,6 +17,7 @@ interface HeaderProps {
   onOpenIncomingCall: () => void;
   onOpenCommandPalette: () => void;
   onOpenAiCopilot: () => void;
+  onOpenHelp: () => void;
   unreadNotifCount: number;
   notifications: Notification[];
   onMarkRead: (id: string) => void;
@@ -26,7 +27,7 @@ export const Header: React.FC<HeaderProps> = ({
   branches, selectedBranchId, setSelectedBranchId,
   currentUser, setCurrentUser, users,
   searchTerm, setSearchTerm, theme, onToggleTheme,
-  onOpenNotifications, onOpenIncomingCall, onOpenCommandPalette, onOpenAiCopilot,
+  onOpenNotifications, onOpenIncomingCall, onOpenCommandPalette, onOpenAiCopilot, onOpenHelp,
   unreadNotifCount, notifications, onMarkRead,
 }) => {
   const [showNotifDropdown, setShowNotifDropdown] = useState(false);
@@ -111,9 +112,6 @@ export const Header: React.FC<HeaderProps> = ({
 
         <div className="h-4 w-px bg-zinc-800 mx-1"></div>
 
-        <button className="p-2 text-zinc-400 hover:text-white transition-colors relative" title="Messages">
-          <MessageSquare className="w-4 h-4" />
-        </button>
         <button onClick={onOpenAiCopilot} className="p-2 text-zinc-400 hover:text-amber-400 transition-colors" title="AI Operational Copilot">
           <Sparkles className="w-4 h-4 text-amber-500 animate-pulse" />
         </button>
@@ -154,7 +152,7 @@ export const Header: React.FC<HeaderProps> = ({
           )}
         </div>
 
-        <button className="p-2 text-zinc-400 hover:text-white transition-colors flex items-center gap-1 text-xs" title="Help"><span>Help</span></button>
+        <button onClick={onOpenHelp} className="p-2 text-zinc-400 hover:text-white transition-colors flex items-center gap-1 text-xs cursor-pointer" title="Help"><span>Help</span></button>
 
         <div className="h-4 w-px bg-zinc-800 mx-1"></div>
 
