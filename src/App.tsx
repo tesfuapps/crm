@@ -26,6 +26,17 @@ import { CommandPalette } from './components/CommandPalette';
 import { AiCopilotDrawer } from './components/AiCopilotDrawer';
 import { callAutomation, afterSalesReminder, requiresFollowUp } from './services/followUpService';
 
+const CURRENT_SCHEMA_VERSION = 4;
+try {
+  const savedVersion = Number(localStorage.getItem('ttm_schema_version') || 0);
+  if (savedVersion < CURRENT_SCHEMA_VERSION) {
+    console.warn(`Upgrading TTM CRM schema from v${savedVersion} to v${CURRENT_SCHEMA_VERSION}...`);
+    localStorage.removeItem('ttm_crm_customers');
+    localStorage.removeItem('ttm_crm_call_logs');
+    localStorage.setItem('ttm_schema_version', String(CURRENT_SCHEMA_VERSION));
+  }
+} catch {}
+
 export function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
     try {

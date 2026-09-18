@@ -246,6 +246,28 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <button type="submit" className={`px-4 py-2 ${primaryBtn} rounded-xl text-sm font-medium flex items-center gap-1`}><Plus className="w-4 h-4" /> <span>Add</span></button>
           </form>
         </div>
+
+        {/* System & Cache Reset */}
+        <div className={`p-6 rounded-2xl border ${cardBg} space-y-4 md:col-span-2`}>
+          <div className="flex items-center gap-3 pb-3 border-b border-zinc-800/60">
+            <Settings className="w-5 h-5 text-amber-400" />
+            <h3 className="font-bold text-white">System Maintenance & Cache Reset</h3>
+          </div>
+          <p className="text-xs text-zinc-400">If your application encounters stale schema errors or blank screens after updates, reset local storage to re-initialize fresh default mock data.</p>
+          <div>
+            <button
+              onClick={() => {
+                if (window.confirm('Are you sure you want to reset all local storage data and cache?')) {
+                  localStorage.clear();
+                  window.location.reload();
+                }
+              }}
+              className="px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-semibold shadow-md transition-colors flex items-center gap-2 cursor-pointer"
+            >
+              <span>🧹 Reset Local Storage & Cache</span>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
