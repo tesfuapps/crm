@@ -10,7 +10,8 @@ import {
   Trophy,
   PhoneCall,
   ChevronsLeft,
-  ChevronsRight
+  ChevronsRight,
+  Bell
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -48,6 +49,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onCol
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'communications', label: 'Communications Feed', icon: PhoneCall },
     { id: 'customers', label: 'Customer Directory', icon: Users },
+    { id: 'notifications', label: 'Notifications Inbox', icon: Bell },
     { id: 'customer-leadboard', label: 'Customer Leaderboard', icon: Trophy },
     { id: 'calendar', label: 'Calendar & Reminders', icon: Calendar },
     { id: 'leaderboard', label: 'Team Scoreboard', icon: Trophy },

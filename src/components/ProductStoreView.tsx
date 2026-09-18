@@ -17,6 +17,7 @@ export const ProductStoreView: React.FC<ProductStoreViewProps> = ({
   onAddProduct, onDeleteProduct, onRecordSale,
 }) => {
   const isDark = theme === 'dark';
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isSaleModalOpen, setIsSaleModalOpen] = useState(false);
   const [itemName, setItemName] = useState('');
@@ -57,6 +58,38 @@ export const ProductStoreView: React.FC<ProductStoreViewProps> = ({
     setIsSaleModalOpen(false);
   };
 
+  const handleBulkImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result as string;
+      if (!text) return;
+      const lines = text.split('\n');
+      let added = 0;
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
+        const parts = line.split(/[,;\t]/).map(p => p.replace(/^["']|["']$/g, '').trim());
+        if (parts.length >= 2) {
+          const [name, cat, price, stock] = parts;
+          const newItem: ProductItem = {
+            id: 'p_' + Date.now() + '_' + i,
+            itemName: name || 'Imported Equipment',
+            itemDescription: 'Imported via CSV spreadsheet',
+            itemCategory: cat || 'Machinery',
+            itemPrice: Number(price) || 15000,
+            stockQuantity: Number(stock) || 10,
+          };
+          onAddProduct(newItem);
+          added++;
+        }
+      }
+      alert(`Successfully imported ${added} products from spreadsheet!`);
+    };
+    reader.readAsText(file);
+  };
+
   return (
     <div className="space-y-6">
       <div className={`p-6 rounded-xl border flex flex-col md:flex-row md:items-center justify-between gap-4 ${cardBg}`}>
@@ -65,10 +98,14 @@ export const ProductStoreView: React.FC<ProductStoreViewProps> = ({
           <p className={`text-sm mt-0.5 ${subText}`}>Manage printing machinery, blanks, and sublimation consumables with live stock levels.</p>
         </div>
         <div className="flex items-center gap-3">
-          <button onClick={() => setIsSaleModalOpen(true)} className={`px-4 py-2.5 ${secBtn} rounded-lg text-sm font-medium flex items-center gap-2`}>
+          <input type="file" ref={fileInputRef} onChange={handleBulkImport} accept=".csv,.txt,.tsv" className="hidden" />
+          <button onClick={() => fileInputRef.current?.click()} className={`px-4 py-2.5 ${secBtn} rounded-lg text-sm font-medium flex items-center gap-2 cursor-pointer`}>
+            <span>📥 Import Products</span>
+          </button>
+          <button onClick={() => setIsSaleModalOpen(true)} className={`px-4 py-2.5 ${secBtn} rounded-lg text-sm font-medium flex items-center gap-2 cursor-pointer`}>
             <ShoppingBag className="w-4 h-4" /> <span>Record Sale</span>
           </button>
-          <button onClick={() => setIsAddModalOpen(true)} className={`px-4 py-2.5 ${primaryBtn} rounded-lg text-sm font-medium flex items-center gap-2`}>
+          <button onClick={() => setIsAddModalOpen(true)} className={`px-4 py-2.5 ${primaryBtn} rounded-lg text-sm font-medium flex items-center gap-2 cursor-pointer`}>
             <Plus className="w-4 h-4" /> <span>Add Product</span>
           </button>
         </div>

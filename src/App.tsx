@@ -22,6 +22,7 @@ import { CalendarFollowUpsView } from './components/CalendarFollowUpsView';
 import { LeaderboardView } from './components/LeaderboardView';
 import { CustomerLeadboardView } from './components/CustomerLeadboardView';
 import { MainCommunicationFeedView } from './components/MainCommunicationFeedView';
+import { NotificationsView } from './components/NotificationsView';
 import { CommandPalette } from './components/CommandPalette';
 import { AiCopilotDrawer } from './components/AiCopilotDrawer';
 import { SystemHelpModal } from './components/SystemHelpModal';
@@ -476,6 +477,17 @@ export function App() {
                selectedBranchId={selectedBranchId} onOpenIncomingCall={() => setIsIncomingCallOpen(true)}
                onSelectCustomer={handleSelectCustomer} setActiveTab={setActiveTab} theme={theme}
                notifications={notifications} unreadCount={unreadNotifCount} products={products} />
+          )}
+          {activeTab === 'notifications' && (
+            <NotificationsView
+              notifications={notifications}
+              currentUser={currentUser}
+              onMarkRead={markNotificationRead}
+              onMarkAllRead={() => {
+                setNotifications(prev => prev.map(n => n.recipientUserId === currentUser.id ? { ...n, read: true } : n));
+              }}
+              theme={theme}
+            />
           )}
           {activeTab === 'customers' && (
             <CustomerListView customers={customers} branches={branches} users={users} callLogs={callLogs} sales={sales}

@@ -24,6 +24,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   notifications, unreadCount, products,
 }) => {
   const isDark = theme === 'dark';
+  const [selectedPeriod, setSelectedPeriod] = React.useState<string>('This Week');
 
   const filteredCustomers = selectedBranchId === 'all'
     ? customers
@@ -33,13 +34,33 @@ export const Dashboard: React.FC<DashboardProps> = ({
     ? callLogs
     : callLogs.filter(cl => filteredCustomerIds.has(cl.customerId));
 
-  const totalCallsToday = filteredCallLogs.length;
+  const timeFilteredCallLogs = React.useMemo(() => {
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+    return filteredCallLogs.filter(cl => {
+      if (!cl.dateTime) return true;
+      const logDate = cl.dateTime.split('T')[0];
+      if (selectedPeriod === 'Today') return logDate === todayStr;
+      if (selectedPeriod === 'This Week') {
+        const d = new Date(logDate);
+        const diffTime = Math.abs(now.getTime() - d.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        return diffDays <= 7;
+      }
+      if (selectedPeriod === 'This Month') {
+        return logDate.substring(0, 7) === todayStr.substring(0, 7);
+      }
+      return true;
+    });
+  }, [filteredCallLogs, selectedPeriod]);
+
+  const totalCallsToday = timeFilteredCallLogs.length;
   const newLeadsCount = filteredCustomers.filter(c => c.customerStage === 'Lead' || c.customerStage === 'Contact').length;
   const clientsCount = filteredCustomers.filter(c => c.customerStage === 'Client').length;
   const todayStr = new Date().toISOString().split('T')[0];
   const overdueFollowUps = filteredCustomers.filter(c => c.nextFollowUpDate && c.nextFollowUpDate < todayStr).length;
 
-  const totalRevenue = filteredCallLogs.reduce((sum, cl) => {
+  const totalRevenue = timeFilteredCallLogs.reduce((sum, cl) => {
     const cust = customers.find(c => c.id === cl.customerId);
     return sum + (cust?.dealValue || 0);
   }, 0);
@@ -56,7 +77,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   }).sort((a, b) => b.clients - a.clients);
 
   const commercialMetrics = React.useMemo(() => {
-    const calls = filteredCallLogs;
+    const calls = timeFilteredCallLogs;
     const prods = products;
 
     const productInquiries: Record<string, { total: number; outOfStock: number; priceTooHigh: number }> = {};
@@ -124,15 +145,33 @@ export const Dashboard: React.FC<DashboardProps> = ({
     const totalLatentETB = latentDemand.reduce((sum, item) => sum + item.pending_etb, 0);
 
     return { highVelocity, priceResistance, latentDemand, totalLatentETB };
-  }, [filteredCallLogs, products]);
+  }, [timeFilteredCallLogs, products]);
 
   return (
     <div className="space-y-8 text-zinc-100 max-w-7xl mx-auto pb-12">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-white">Welcome to TTM CRM</h1>
-        <p className="text-xs text-zinc-400 mt-1">
-          Printing Showroom Operations • {selectedBranchId === 'all' ? 'All Showrooms' : branches.find(b => b.id === selectedBranchId)?.name}
-        </p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-white">Welcome to TTM CRM</h1>
+          <p className="text-xs text-zinc-400 mt-1">
+            Printing Showroom Operations • {selectedBranchId === 'all' ? 'All Showrooms' : branches.find(b => b.id === selectedBranchId)?.name}
+          </p>
+        </div>
+        {/* Time Horizon Filter */}
+        <div className="flex items-center bg-[#121212] border border-neutral-800 rounded-xl p-1 text-xs">
+          {['Today', 'This Week', 'This Month', 'All-Time'].map((range) => (
+            <button
+              key={range}
+              onClick={() => setSelectedPeriod(range)}
+              className={`px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer ${
+                selectedPeriod === range 
+                  ? 'bg-amber-500/20 text-amber-400 font-bold border border-amber-500/40 shadow-xs' 
+                  : 'text-neutral-400 hover:text-neutral-200'
+              }`}
+            >
+              {range}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Top 3 Metric Tiles */}

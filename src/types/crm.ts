@@ -95,7 +95,7 @@ export interface AIForecast {
 export interface Notification {
   id: string;
   recipientUserId: string;
-  type: 'branch_reassignment' | 'follow_up_due' | 'stage_change' | 'system';
+  type: 'branch_reassignment' | 'follow_up_due' | 'stage_change' | 'system' | 'complaint' | 'mention' | 'after_sales' | string;
   title: string;
   message: string;
   read: boolean;

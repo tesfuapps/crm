@@ -1,9 +1,9 @@
 import { Branch, User, Customer, CallLog, ProductItem, ProductSale, Notification, Label, FilterPreset } from '../types/crm';
 
 export const INITIAL_BRANCHES: Branch[] = [
-  { id: 'b1', name: 'Bole Printing Showroom', subCity: 'Bole' },
-  { id: 'b2', name: 'Mexico Machinery Hub', subCity: 'Mexico' },
-  { id: 'b3', name: 'Piassa Retail Branch', subCity: 'Piassa' },
+  { id: 'b1', name: 'Bole Branch', subCity: 'Bole' },
+  { id: 'b2', name: 'Mexico Branch', subCity: 'Mexico' },
+  { id: 'b3', name: 'Piassa Branch', subCity: 'Piassa' },
 ];
 
 export const INITIAL_USERS: User[] = [
