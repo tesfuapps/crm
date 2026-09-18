@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { Customer, CallLog, ProductSale, Branch } from '../types/crm';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { BarChart3, TrendingUp, Building2, Download, Award, DollarSign, Brain, Sparkles, AlertTriangle, ChevronRight, FileImage, FileText } from 'lucide-react';
+import { toPng, toJpeg } from 'html-to-image';
 
 interface ReportsViewProps {
   customers: Customer[];
@@ -59,55 +60,22 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
     document.body.removeChild(link);
   };
 
-  const downloadChart = (elementId: string, format: 'png' | 'jpeg', filename: string) => {
+  const downloadChart = async (elementId: string, format: 'png' | 'jpeg', filename: string) => {
     const container = document.getElementById(elementId);
     if (!container) return;
 
-    const svg = container.querySelector('svg');
-    if (!svg) return;
-
-    const rect = svg.getBoundingClientRect();
-    const width = rect.width || 500;
-    const height = rect.height || 300;
-
-    const clonedSvg = svg.cloneNode(true) as SVGSVGElement;
-    clonedSvg.setAttribute('width', `${width}px`);
-    clonedSvg.setAttribute('height', `${height}px`);
-    clonedSvg.setAttribute('viewBox', `0 0 ${width} ${height}`);
-
-    const svgData = new XMLSerializer().serializeToString(clonedSvg);
-    const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
-    const url = URL.createObjectURL(svgBlob);
-
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      const scale = 2;
-      canvas.width = width * scale;
-      canvas.height = height * scale;
-
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-
-      ctx.scale(scale, scale);
-      ctx.fillStyle = '#141414';
-      ctx.fillRect(0, 0, width, height);
-      ctx.drawImage(img, 0, 0, width, height);
-
-      const mimeType = format === 'jpeg' ? 'image/jpeg' : 'image/png';
-      const dataUrl = canvas.toDataURL(mimeType, 0.95);
+    try {
+      const dataUrl = format === 'jpeg'
+        ? await toJpeg(container, { backgroundColor: '#141414', quality: 0.95, pixelRatio: 2 })
+        : await toPng(container, { backgroundColor: '#141414', quality: 0.95, pixelRatio: 2 });
 
       const link = document.createElement('a');
       link.download = `${filename}.${format === 'jpeg' ? 'jpg' : 'png'}`;
       link.href = dataUrl;
       link.click();
-
-      URL.revokeObjectURL(url);
-    };
-
-    img.src = url;
+    } catch (error) {
+      console.error('Failed to export chart:', error);
+    }
   };
 
   const handleExportPDF = (title: string, dataSummary: string) => {
