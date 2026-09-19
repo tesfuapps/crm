@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
-import { ProductItem, ProductSale, Customer } from '../types/crm';
-import { Package, Plus, DollarSign, Layers, ShoppingBag, Trash2 } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { ProductItem, ProductSale, Customer, Branch, User } from '../types/crm';
+import { Package, Plus, DollarSign, Layers, ShoppingBag, Trash2, Download, Filter } from 'lucide-react';
 
 interface ProductStoreViewProps {
   products: ProductItem[];
   sales: ProductSale[];
   customers: Customer[];
+  branches: Branch[];
+  users: User[];
   theme: 'light' | 'dark';
   onAddProduct: (item: ProductItem) => void;
   onDeleteProduct: (itemId: string) => void;
@@ -13,7 +15,7 @@ interface ProductStoreViewProps {
 }
 
 export const ProductStoreView: React.FC<ProductStoreViewProps> = ({
-  products, sales, customers, theme,
+  products, sales, customers, branches, users, theme,
   onAddProduct, onDeleteProduct, onRecordSale,
 }) => {
   const isDark = theme === 'dark';
@@ -28,6 +30,22 @@ export const ProductStoreView: React.FC<ProductStoreViewProps> = ({
   const [saleCustomerId, setSaleCustomerId] = useState(customers[0]?.id || '');
   const [saleItemId, setSaleItemId] = useState(products[0]?.id || '');
   const [saleQuantity, setSaleQuantity] = useState(1);
+  const [salesFilterPeriod, setSalesFilterPeriod] = useState<string>('All-Time');
+
+  const now = new Date();
+  const todayStr = now.toISOString().split('T')[0];
+  const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+  const filteredSales = useMemo(() => {
+    return sales.filter(sale => {
+      const saleDate = new Date(sale.saleDate);
+      if (salesFilterPeriod === 'Today') return sale.saleDate === todayStr;
+      if (salesFilterPeriod === 'This Week') return saleDate >= weekAgo;
+      if (salesFilterPeriod === 'This Month') return saleDate >= monthAgo;
+      return true;
+    });
+  }, [sales, salesFilterPeriod]);
 
   const cardBg = isDark ? 'bg-[#18181b] border-zinc-800/60' : 'bg-white border-slate-200';
   const cardText = isDark ? 'text-zinc-100' : 'text-slate-900';
@@ -90,6 +108,27 @@ export const ProductStoreView: React.FC<ProductStoreViewProps> = ({
     reader.readAsText(file);
   };
 
+  const exportSalesToCSV = () => {
+    const header = 'Transaction ID,Date,Customer Name,Company,Product Item,Category,Quantity,Sale Amount (ETB),Branch,Sales Rep,Fulfillment,Delivery Details\n';
+    const rows = filteredSales.map(sale => {
+      const cust = customers.find(c => c.id === sale.customerId);
+      const prod = products.find(p => p.id === sale.itemId);
+      const branch = branches.find(b => b.id === cust?.branchId);
+      const rep = users.find(u => u.id === sale.salesRepId);
+      const fulfillment = sale.fulfillment_type === 'pickup' ? 'Pickup' : sale.addis_delivery_type === 'own_delivery' ? 'Own Delivery' : sale.addis_delivery_type === 'outsourced' ? sale.outsourced_provider || 'Outsourced' : sale.delivery_scope === 'province' ? sale.carrier || 'Bus Cargo' : 'N/A';
+      const deliveryDetails = sale.vehicle_plate_number || sale.ticketNumber || sale.driver_phone || '';
+      return `"${sale.id}","${sale.saleDate}","${cust?.customerName || 'Unknown'}","${cust?.companyName || ''}","${prod?.itemName || 'Product'}","${prod?.itemCategory || ''}",${sale.quantity},${sale.saleAmount},"${branch?.name || ''}","${rep?.name || ''}","${fulfillment}","${deliveryDetails}"`;
+    }).join('\n');
+    const blob = new Blob([header + rows], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `TTM_Sales_${salesFilterPeriod.replace(/\s/g, '_')}_${todayStr}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="space-y-6">
       <div className={`p-6 rounded-xl border flex flex-col md:flex-row md:items-center justify-between gap-4 ${cardBg}`}>
@@ -136,6 +175,33 @@ export const ProductStoreView: React.FC<ProductStoreViewProps> = ({
 
       <div className={`rounded-xl border p-6 ${cardBg}`}>
         <h3 className={`font-bold mb-4 flex items-center gap-2 ${cardText}`}><ShoppingBag className="w-4 h-4 text-amber-400" /> <span>Recent Product Sales Transactions</span></h3>
+
+        {/* Filter & Export Bar */}
+        <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-[#161616] border border-neutral-800 rounded-xl mb-4">
+          <div className="flex items-center gap-1.5 text-xs">
+            <Filter className="w-3.5 h-3.5 text-neutral-500" />
+            {['Today', 'This Week', 'This Month', 'All-Time'].map((p) => (
+              <button
+                key={p}
+                onClick={() => setSalesFilterPeriod(p)}
+                className={`px-3 py-1.5 rounded-lg font-medium transition-all ${
+                  salesFilterPeriod === p
+                    ? 'bg-amber-500/20 text-amber-400 font-bold border border-amber-500/40'
+                    : 'text-neutral-400 hover:text-neutral-200'
+                }`}
+              >
+                {p}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] text-neutral-500 font-mono">{filteredSales.length} transactions</span>
+            <button onClick={exportSalesToCSV} className="px-3 py-1.5 bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 text-xs font-medium text-neutral-300 rounded-lg flex items-center gap-1.5">
+              <Download className="w-3 h-3" /> Export CSV
+            </button>
+          </div>
+        </div>
+
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead className={`text-xs uppercase tracking-wider font-semibold border-b ${borderSub}`}>
@@ -146,23 +212,29 @@ export const ProductStoreView: React.FC<ProductStoreViewProps> = ({
                 <th className="py-3 px-4">Quantity</th>
                 <th className="py-3 px-4">Sale Amount</th>
                 <th className="py-3 px-4">Date</th>
+                <th className="py-3 px-4">Fulfillment</th>
               </tr>
             </thead>
             <tbody className={`divide-y ${isDark ? 'divide-zinc-800/60' : 'divide-slate-100'}`}>
-              {sales.length === 0 ? (
-                <tr><td colSpan={6} className="py-8 text-center text-zinc-500">No sales recorded yet.</td></tr>
+              {filteredSales.length === 0 ? (
+                <tr><td colSpan={7} className="py-8 text-center text-zinc-500">No sales recorded for this period.</td></tr>
               ) : (
-                sales.map((sale) => {
+                filteredSales.map((sale) => {
                   const cust = customers.find(c => c.id === sale.customerId);
                   const prod = products.find(p => p.id === sale.itemId);
+                  const fulfillment = sale.fulfillment_type === 'pickup' ? 'Pickup' : sale.addis_delivery_type === 'own_delivery' ? '🏢 Own Delivery' : sale.addis_delivery_type === 'outsourced' ? `🚗 ${sale.outsourced_provider || 'Outsourced'}` : sale.delivery_scope === 'province' ? `🚌 ${sale.carrier || 'Bus Cargo'}` : '—';
                   return (
                     <tr key={sale.id} className={`hover:${isDark ? 'bg-zinc-800/40' : 'bg-slate-50/80'} transition-colors`}>
                       <td className="py-3 px-4 font-mono text-xs text-zinc-500">{sale.id}</td>
-                      <td className="py-3 px-4 font-medium text-white">{cust?.customerName || 'Unknown'}</td>
+                      <td className="py-3 px-4">
+                        <span className="font-medium text-white">{cust?.customerName || 'Unknown'}</span>
+                        {cust?.companyName && <span className="text-[11px] text-zinc-500 block">{cust.companyName}</span>}
+                      </td>
                       <td className="py-3 px-4 text-zinc-300">{prod?.itemName || 'Product'}</td>
                       <td className="py-3 px-4 text-zinc-300">{sale.quantity}</td>
                       <td className="py-3 px-4 font-bold text-emerald-400">{sale.saleAmount.toLocaleString()} ETB</td>
                       <td className="py-3 px-4 text-xs text-zinc-500">{sale.saleDate}</td>
+                      <td className="py-3 px-4 text-xs">{fulfillment}</td>
                     </tr>
                   );
                 })

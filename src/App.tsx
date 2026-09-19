@@ -689,7 +689,7 @@ export function App() {
               selectedBranchId={selectedBranchId} theme={theme} />
           )}
           {activeTab === 'products' && (
-            <ProductStoreView products={products} sales={sales} customers={customers} theme={theme}
+            <ProductStoreView products={products} sales={sales} customers={customers} branches={branches} users={users} theme={theme}
               onAddProduct={(item) => setProducts(prev => [item, ...prev])}
               onDeleteProduct={(id) => setProducts(prev => prev.filter(p => p.id !== id))}
               onRecordSale={handleRecordSale} />

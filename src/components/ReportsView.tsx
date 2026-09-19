@@ -19,6 +19,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
   const isDark = theme === 'dark';
   const [reportPeriod, setReportPeriod] = useState<'daily' | 'weekly' | 'monthly'>('weekly');
   const [showAIInsights, setShowAIInsights] = useState(false);
+  const [selectedSourceDetail, setSelectedSourceDetail] = useState<string | null>(null);
 
   const barChartRef = useRef<HTMLDivElement>(null);
   const pieChartRef = useRef<HTMLDivElement>(null);
@@ -127,11 +128,41 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
   const hotLeadsValue = filteredCustomers.filter(c => c.leadPriority === 'Hot').reduce((s, c) => s + c.dealValue, 0);
   const conversionRate = filteredCustomers.length > 0 ? ((clientCount / filteredCustomers.length) * 100).toFixed(0) : '0';
 
+  const now = new Date();
+  const todayStr = now.toISOString().split('T')[0];
+
   const aiNotes = [
     `High-value opportunity: ${hotLeadsCount} hot leads in pipeline totaling ${hotLeadsValue.toLocaleString()} ETB`,
     `${overdueFollowups.length} customers overdue on follow-up — immediate action recommended`,
     `Conversion rate: ${conversionRate}% from Contact to Client stage`,
   ];
+
+  // Lead source summary with inquiry count, closed sales, revenue, conversion rate
+  const leadSourceSummary = sourceData.map(s => {
+    const sourceCustomers = filteredCustomers.filter(c => c.source === s.name);
+    const totalInquiries = sourceCustomers.length;
+    const closedClients = sourceCustomers.filter(c => c.customerStage === 'Client').length;
+    const sourceSales = filteredSales.filter(sale => {
+      const cust = customers.find(c => c.id === sale.customerId);
+      return cust && cust.source === s.name;
+    });
+    const totalRevenue = sourceSales.reduce((sum, sale) => sum + sale.saleAmount, 0);
+    const conversionPct = totalInquiries > 0 ? ((closedClients / totalInquiries) * 100).toFixed(1) : '0';
+    return { name: s.name, totalInquiries, closedClients, totalRevenue, conversionPct, avgDeal: closedClients > 0 ? Math.round(totalRevenue / closedClients) : 0 };
+  });
+
+  const branchPerformance = branches.map(b => {
+    const bCustomers = customers.filter(c => c.branchId === b.id);
+    const bCustIds = new Set(bCustomers.map(c => c.id));
+    const bSales = sales.filter(s => bCustIds.has(s.customerId));
+    const totalRevenue = bSales.reduce((sum, s) => sum + s.saleAmount, 0);
+    const bClients = bCustomers.filter(c => c.customerStage === 'Client').length;
+    const bHotLeads = bCustomers.filter(c => c.leadPriority === 'Hot').length;
+    const bOverdue = bCustomers.filter(c => c.nextFollowUpDate && c.nextFollowUpDate < todayStr && c.customerStage !== 'Client').length;
+    const bConversionRate = bCustomers.length > 0 ? ((bClients / bCustomers.length) * 100).toFixed(1) : '0';
+    const avgDealValue = bClients > 0 ? Math.round(totalRevenue / bClients) : 0;
+    return { name: b.name, totalCustomers: bCustomers.length, clients: bClients, hotLeads: bHotLeads, overdueFollowups: bOverdue, totalRevenue, conversionRate: bConversionRate, avgDealValue };
+  });
 
   return (
     <div className="space-y-6">
@@ -264,24 +295,121 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
               </button>
             </div>
           </div>
-          <div className="h-60 flex items-center justify-center">
+          <div className="h-60 flex items-center justify-center cursor-pointer">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Pie data={sourceData} cx="50%" cy="50%" outerRadius={80} dataKey="value" label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`} labelLine={{ stroke: '#71717A' }}>
-                  {sourceData.map((_, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="#18181b" strokeWidth={2} />)}
+                <Pie data={sourceData} cx="50%" cy="50%" outerRadius={80} dataKey="value"
+                  onClick={(_, index) => { const clicked = sourceData[index]; setSelectedSourceDetail(selectedSourceDetail === clicked.name ? null : clicked.name); }}
+                  label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`} labelLine={{ stroke: '#71717A' }}>
+                  {sourceData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="#18181b" strokeWidth={selectedSourceDetail === entry.name ? 4 : 2} opacity={selectedSourceDetail && selectedSourceDetail !== entry.name ? 0.35 : 1} style={{ cursor: 'pointer' }} />)}
                 </Pie>
                 <Tooltip contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', borderRadius: '10px', color: '#fff', fontSize: '12px' }} />
               </PieChart>
             </ResponsiveContainer>
           </div>
           {/* Color Legend */}
-          <div className="flex flex-wrap items-center justify-center gap-3 pt-3 border-t border-neutral-800/80 text-[11px] text-neutral-300">
-            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-amber-500" /> Telegram</span>
-            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-blue-500" /> Referral</span>
-            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> Walk-in</span>
-            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-purple-500" /> Facebook</span>
-            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-pink-500" /> Exhibition</span>
+          <div className="flex flex-wrap items-center justify-center gap-3 pt-3 border-t border-neutral-800/80 text-[11px] text-neutral-300 no-export">
+            {sourceData.map((entry, index) => (
+              <button key={entry.name} onClick={() => setSelectedSourceDetail(selectedSourceDetail === entry.name ? null : entry.name)} className={`flex items-center gap-1.5 cursor-pointer transition-opacity ${selectedSourceDetail && selectedSourceDetail !== entry.name ? 'opacity-40' : ''}`}>
+                <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} /> {entry.name}
+              </button>
+            ))}
           </div>
+
+          {/* Lead Source Summary Table */}
+          <div className="pt-4 border-t border-neutral-800/80">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-500 mb-3">Lead Source Performance Summary</h4>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="text-[10px] uppercase tracking-wider font-semibold text-zinc-500 border-b border-zinc-800/60">
+                  <tr>
+                    <th className="py-2 px-3">Source</th>
+                    <th className="py-2 px-3 text-right">Inquiries</th>
+                    <th className="py-2 px-3 text-right">Clients Closed</th>
+                    <th className="py-2 px-3 text-right">Revenue (ETB)</th>
+                    <th className="py-2 px-3 text-right">Avg Deal (ETB)</th>
+                    <th className="py-2 px-3 text-right">Conversion %</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-800/40">
+                  {leadSourceSummary
+                    .filter(s => !selectedSourceDetail || s.name === selectedSourceDetail)
+                    .sort((a, b) => b.totalRevenue - a.totalRevenue)
+                    .map((s, i) => {
+                      const color = COLORS[sourceData.findIndex(sd => sd.name === s.name) % COLORS.length];
+                      return (
+                        <tr key={s.name} className="hover:bg-zinc-800/20 transition-colors">
+                          <td className="py-2 px-3 font-medium text-zinc-200 flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} /> {s.name}
+                          </td>
+                          <td className="py-2 px-3 text-right text-zinc-400">{s.totalInquiries}</td>
+                          <td className="py-2 px-3 text-right text-zinc-300">{s.closedClients}</td>
+                          <td className="py-2 px-3 text-right font-bold text-emerald-400">{s.totalRevenue.toLocaleString()}</td>
+                          <td className="py-2 px-3 text-right text-zinc-400">{s.avgDeal.toLocaleString()}</td>
+                          <td className="py-2 px-3 text-right">
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${Number(s.conversionPct) >= 20 ? 'bg-emerald-950/60 text-emerald-400' : Number(s.conversionPct) >= 10 ? 'bg-amber-950/60 text-amber-400' : 'bg-zinc-800 text-zinc-400'}`}>{s.conversionPct}%</span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                </tbody>
+                <tfoot className="border-t border-zinc-800/60 font-bold">
+                  <tr className="text-zinc-300">
+                    <td className="py-2 px-3">Total</td>
+                    <td className="py-2 px-3 text-right text-zinc-400">{leadSourceSummary.reduce((s, r) => s + r.totalInquiries, 0)}</td>
+                    <td className="py-2 px-3 text-right text-zinc-300">{leadSourceSummary.reduce((s, r) => s + r.closedClients, 0)}</td>
+                    <td className="py-2 px-3 text-right text-emerald-400">{leadSourceSummary.reduce((s, r) => s + r.totalRevenue, 0).toLocaleString()}</td>
+                    <td className="py-2 px-3 text-right text-zinc-400">—</td>
+                    <td className="py-2 px-3 text-right text-zinc-400">{leadSourceSummary.length > 0 ? ((leadSourceSummary.reduce((s, r) => s + r.closedClients, 0) / leadSourceSummary.reduce((s, r) => s + r.totalInquiries, 0)) * 100).toFixed(1) : '0'}%</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Branch Performance Matrix */}
+      <div className={`rounded-2xl border ${cardBg} overflow-hidden`}>
+        <div className="p-6 border-b border-zinc-800/60">
+          <h3 className={`font-bold flex items-center gap-2 ${cardText}`}><Building2 className="w-4 h-4 text-amber-400" /> <span>Branch Performance Matrix</span></h3>
+          <p className={`text-xs mt-1 ${subText}`}>Detailed performance breakdown by branch across key business metrics.</p>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="text-xs uppercase tracking-wider font-semibold text-zinc-500 border-b border-zinc-800/60">
+              <tr>
+                <th className="py-3 px-4">Branch</th>
+                <th className="py-3 px-4 text-right">Customers</th>
+                <th className="py-3 px-4 text-right">Clients</th>
+                <th className="py-3 px-4 text-right">Hot Leads</th>
+                <th className="py-3 px-4 text-right">Overdue</th>
+                <th className="py-3 px-4 text-right">Revenue (ETB)</th>
+                <th className="py-3 px-4 text-right">Avg Deal (ETB)</th>
+                <th className="py-3 px-4 text-right">Conversion %</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-800/40">
+              {branchPerformance.map(b => (
+                <tr key={b.name} className="hover:bg-zinc-800/20 transition-colors">
+                  <td className="py-3 px-4 font-bold text-white">{b.name}</td>
+                  <td className="py-3 px-4 text-right text-zinc-400">{b.totalCustomers}</td>
+                  <td className="py-3 px-4 text-right text-zinc-300">{b.clients}</td>
+                  <td className="py-3 px-4 text-right">
+                    {b.hotLeads > 0 ? <span className="text-amber-400 font-bold">{b.hotLeads}</span> : <span className="text-zinc-600">0</span>}
+                  </td>
+                  <td className="py-3 px-4 text-right">
+                    {b.overdueFollowups > 0 ? <span className="text-red-400 font-bold">{b.overdueFollowups}</span> : <span className="text-zinc-600">0</span>}
+                  </td>
+                  <td className="py-3 px-4 text-right font-bold text-emerald-400">{b.totalRevenue.toLocaleString()}</td>
+                  <td className="py-3 px-4 text-right text-zinc-400">{b.avgDealValue.toLocaleString()}</td>
+                  <td className="py-3 px-4 text-right">
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${Number(b.conversionRate) >= 20 ? 'bg-emerald-950/60 text-emerald-400' : Number(b.conversionRate) >= 10 ? 'bg-amber-950/60 text-amber-400' : 'bg-zinc-800 text-zinc-400'}`}>{b.conversionRate}%</span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
