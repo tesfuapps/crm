@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Customer, Branch } from '../types/crm';
-import { ArrowLeftRight, Upload, Download, CheckCircle2, AlertTriangle, FileText, Sparkles, Database, GitMerge } from 'lucide-react';
+import { ArrowLeftRight, Upload, Download, CheckCircle2, AlertTriangle, FileText, Sparkles, Database, GitMerge, Eye, X } from 'lucide-react';
 
 interface ImportExportViewProps {
   customers: Customer[];
@@ -27,6 +27,8 @@ export const ImportExportView: React.FC<ImportExportViewProps> = ({
   const [importStatus, setImportStatus] = useState<string | null>(null);
   const [validationReport, setValidationReport] = useState<{ success: number; duplicates: number; flaggedForReview: number } | null>(null);
   const [reviewQueue, setReviewQueue] = useState<{ historical: HistoricalRecord; existingCustomer: Customer; reason: string }[]>([]);
+  const [csvPreview, setCsvPreview] = useState<{ headers: string[]; rows: string[][]; rawFile: File | null } | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
 
   const cardBg = isDark ? 'bg-[#18181b] border-zinc-800/60' : 'bg-white border-slate-200';
   const subText = isDark ? 'text-zinc-400' : 'text-slate-500';
@@ -50,56 +52,84 @@ export const ImportExportView: React.FC<ImportExportViewProps> = ({
         return;
       }
 
-      // Expected CSV format: Customer Name,Company Name,Phone,Stage,Source,Deal Value
-      let successCount = 0;
-      let duplicateCount = 0;
-      const newCustsList: Customer[] = [];
-
-      for (let i = 1; i < lines.length; i++) {
-        const cols = lines[i].split(',').map(c => c.replace(/^"|"$/g, '').trim());
-        if (cols.length < 3) continue;
-
-        const customerName = cols[0] || 'Unknown Client';
-        const companyName = cols[1] && cols[1] !== '' ? cols[1] : undefined;
-        const phoneNumber = cols[2] || '0911000000';
-        const customerStage = (cols[3] as any) || 'Lead';
-        const source = cols[4] || 'CSV Import';
-        const dealValue = Number(cols[5]) || 20000;
-
-        const existing = customers.find(c => c.phoneNumber === phoneNumber);
-        if (existing) {
-          duplicateCount++;
-        } else {
-          successCount++;
-          newCustsList.push({
-            id: 'csv_' + Date.now() + '_' + i,
-            customerName,
-            companyName,
-            phoneNumber,
-            customerType: 'New',
-            source,
-            purposeOfCall: '[AI Completed] Manual CSV Import - Initial inquiry regarding printing machinery & blanks.',
-            customerStage,
-            assignedUserId: 'u1',
-            branchId: 'unassigned',
-            mainBranchId: 'unassigned',
-            leadPriority: 'Warm',
-            dealValue,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            consecutivePurchaseStreak: {},
-            branchReassignmentLog: [],
-          });
-        }
-      }
-
-      if (newCustsList.length > 0) {
-        onImportCustomers(newCustsList);
-      }
-      setValidationReport({ success: successCount, duplicates: duplicateCount, flaggedForReview: 0 });
-      setImportStatus(`Successfully imported ${successCount} customers from CSV file (${duplicateCount} duplicate phone numbers skipped).`);
+      const headers = lines[0].split(',').map(h => h.replace(/^"|"$/g, '').trim());
+      const rows = lines.slice(1).map(line => line.split(',').map(c => c.replace(/^"|"$/g, '').trim()));
+      setCsvPreview({ headers, rows, rawFile: file });
+      setShowPreview(true);
+      setImportStatus(null);
+      setValidationReport(null);
     };
     reader.readAsText(file);
+  };
+
+  const handleConfirmCsvImport = () => {
+    if (!csvPreview) return;
+    let successCount = 0;
+    let duplicateCount = 0;
+    let flaggedCount = 0;
+    const newCustsList: Customer[] = [];
+    const flaggedList: { historical: HistoricalRecord; existingCustomer: Customer; reason: string }[] = [];
+
+    csvPreview.rows.forEach((cols, i) => {
+      if (cols.length < 3) return;
+      const customerName = cols[0] || 'Unknown Client';
+      const companyName = cols[1] && cols[1] !== '' ? cols[1] : undefined;
+      const phoneNumber = cols[2] || '0911000000';
+      const customerStage = (cols[3] as any) || 'Lead';
+      const source = cols[4] || 'CSV Import';
+      const dealValue = Number(cols[5]) || 20000;
+
+      const exactMatch = customers.find(c => c.phoneNumber === phoneNumber);
+      const fuzzyMatch = customers.find(c =>
+        c.companyName && companyName && c.companyName.toLowerCase().includes(companyName.toLowerCase().slice(0, 5))
+      );
+
+      if (exactMatch || fuzzyMatch) {
+        duplicateCount++;
+        flaggedList.push({
+          historical: {
+            communicationId: 'CSV-' + (i + 1),
+            customerName,
+            companyName: companyName || '',
+            phoneNumber,
+            callDuration: 5,
+            reasonForCall: '',
+            customerStatus: 'New',
+            callStatus: customerStage,
+          },
+          existingCustomer: exactMatch || fuzzyMatch!,
+          reason: exactMatch ? 'Exact phone match' : 'Fuzzy company match',
+        });
+      } else {
+        successCount++;
+        newCustsList.push({
+          id: 'csv_' + Date.now() + '_' + i,
+          customerName,
+          companyName,
+          phoneNumber,
+          customerType: 'New',
+          source,
+          purposeOfCall: '[AI Completed] Manual CSV Import - Initial inquiry regarding printing machinery & blanks.',
+          customerStage,
+          assignedUserId: 'u1',
+          branchId: 'unassigned',
+          mainBranchId: 'unassigned',
+          leadPriority: 'Warm',
+          dealValue,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          consecutivePurchaseStreak: {},
+          branchReassignmentLog: [],
+        });
+      }
+    });
+
+    if (newCustsList.length > 0) onImportCustomers(newCustsList);
+    setReviewQueue(flaggedList);
+    setValidationReport({ success: successCount, duplicates: duplicateCount, flaggedForReview: flaggedList.length });
+    setImportStatus(`Imported ${successCount} new customers (${duplicateCount} duplicates flagged for review).`);
+    setShowPreview(false);
+    setCsvPreview(null);
   };
 
   const handleHistoricalMigration = () => {
@@ -253,6 +283,84 @@ export const ImportExportView: React.FC<ImportExportViewProps> = ({
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* CSV Preview Modal */}
+      {showPreview && csvPreview && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className={`rounded-2xl shadow-2xl max-w-4xl w-full max-h-[85vh] flex flex-col overflow-hidden border ${cardBg}`}>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-800/60">
+              <div className="flex items-center gap-3">
+                <Eye className="w-5 h-5 text-amber-400" />
+                <div>
+                  <h3 className="font-bold text-white">CSV Import Preview</h3>
+                  <p className="text-xs text-zinc-400">{csvPreview.rows.length} rows found. Review before importing.</p>
+                </div>
+              </div>
+              <button onClick={() => { setShowPreview(false); setCsvPreview(null); }} className="p-2 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="flex-1 overflow-auto p-4">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-left text-zinc-400 uppercase text-[10px] font-bold border-b border-zinc-800/60">
+                    <th className="pb-2 pr-3">#</th>
+                    {csvPreview.headers.map((h, i) => (
+                      <th key={i} className="pb-2 px-3">{h}</th>
+                    ))}
+                    <th className="pb-2 px-3">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-800/40">
+                  {csvPreview.rows.slice(0, 100).map((row, i) => {
+                    const phone = row[2] || '';
+                    const companyName = row[1] || '';
+                    const exactMatch = customers.find(c => c.phoneNumber === phone);
+                    const fuzzyMatch = customers.find(c =>
+                      c.companyName && companyName && c.companyName.toLowerCase().includes(companyName.toLowerCase().slice(0, 5))
+                    );
+                    const isDupe = !!(exactMatch || fuzzyMatch);
+                    return (
+                      <tr key={i} className={isDupe ? 'bg-amber-950/20' : ''}>
+                        <td className="py-2 pr-3 text-zinc-500 font-mono">{i + 1}</td>
+                        {row.map((cell, j) => (
+                          <td key={j} className="py-2 px-3 text-zinc-300 max-w-[160px] truncate">{cell || '—'}</td>
+                        ))}
+                        <td className="py-2 px-3">
+                          {isDupe ? (
+                            <span className="text-[10px] bg-amber-950/60 text-amber-300 px-2 py-0.5 rounded border border-amber-800 font-semibold">
+                              ⚠ Duplicate ({exactMatch ? 'Phone' : 'Company'})
+                            </span>
+                          ) : (
+                            <span className="text-[10px] bg-emerald-950/60 text-emerald-300 px-2 py-0.5 rounded border border-emerald-800 font-semibold">
+                              ✓ New
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              {csvPreview.rows.length > 100 && (
+                <p className="text-xs text-zinc-500 text-center mt-3">Showing first 100 of {csvPreview.rows.length} rows.</p>
+              )}
+            </div>
+            <div className="flex items-center justify-between px-6 py-4 border-t border-zinc-800/60">
+              <button onClick={() => { setShowPreview(false); setCsvPreview(null); }} className={`px-4 py-2 border rounded-xl text-xs font-semibold ${secBtn}`}>
+                Cancel
+              </button>
+              <div className="flex items-center gap-4">
+                <div className="text-xs text-zinc-400 space-x-3">
+                  <span>New: <strong className="text-emerald-400">{csvPreview.rows.filter((row, i) => { const p = row[2] || ''; const cn = row[1] || ''; return !customers.find(c => c.phoneNumber === p) && !customers.find(c => c.companyName && cn && c.companyName.toLowerCase().includes(cn.toLowerCase().slice(0, 5))); }).length}</strong></span>
+                  <span>Duplicates: <strong className="text-amber-400">{csvPreview.rows.filter((row, i) => { const p = row[2] || ''; const cn = row[1] || ''; return !!(customers.find(c => c.phoneNumber === p) || customers.find(c => c.companyName && cn && c.companyName.toLowerCase().includes(cn.toLowerCase().slice(0, 5)))); }).length}</strong></span>
+                </div>
+                <button onClick={handleConfirmCsvImport} className={`px-5 py-2 ${primaryBtn} rounded-xl text-xs font-bold shadow-sm flex items-center gap-2`}>
+                  <Upload className="w-4 h-4" /> Import Confirmed
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
