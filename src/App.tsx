@@ -27,6 +27,8 @@ import { CommandPalette } from './components/CommandPalette';
 import { AiCopilotDrawer } from './components/AiCopilotDrawer';
 import { SystemHelpModal } from './components/SystemHelpModal';
 import { callAutomation, afterSalesReminder, requiresFollowUp } from './services/followUpService';
+import { getCustomers, getCommunications, getProducts, getNotifications, logCommunication, recordSale } from './services/api';
+import { useRealtimeSync } from './hooks/useRealtimeSync';
 
 const CURRENT_SCHEMA_VERSION = 4;
 try {
@@ -101,6 +103,138 @@ export function App() {
   useEffect(() => {
     localStorage.setItem('ttm_crm_reminders', JSON.stringify(reminders));
   }, [reminders]);
+
+  useEffect(() => {
+    async function loadSupabaseData() {
+      try {
+        const [remoteCusts, remoteComms, remoteProds, remoteNotifs] = await Promise.all([
+          getCustomers().catch(() => []),
+          getCommunications().catch(() => []),
+          getProducts().catch(() => []),
+          getNotifications().catch(() => []),
+        ]);
+        if (remoteCusts.length > 0) {
+          setCustomers(remoteCusts.map((c: any) => ({
+            id: c.id,
+            customerName: c.name,
+            companyName: c.company_name,
+            phoneNumber: c.phone_number,
+            customerType: 'Old',
+            source: 'Telegram',
+            purposeOfCall: 'Inquiry',
+            customerStage: c.priority === 'Hot' ? 'Lead' : 'Client',
+            assignedUserId: 'u1',
+            branchId: c.main_branch || 'b1',
+            mainBranchId: c.main_branch || 'b1',
+            leadPriority: c.priority || 'Normal',
+            dealValue: Number(c.lifetime_spent_etb) || 0,
+            consecutivePurchaseStreak: {},
+            branchReassignmentLog: [],
+            createdAt: c.created_at,
+            updatedAt: c.created_at,
+          } as Customer)));
+        }
+        if (remoteComms.length > 0) {
+          setCallLogs(remoteComms.map((cl: any) => ({
+            id: cl.id,
+            customerId: cl.customer_id,
+            userId: cl.sales_rep_id || 'u1',
+            dateTime: cl.call_date,
+            durationMinutes: Math.round((cl.duration_seconds || 60) / 60),
+            purpose: cl.purpose || cl.call_status,
+            remark: cl.remarks || '',
+            callStatus: cl.call_status,
+            productId: cl.product_id,
+            unlistedProductName: cl.unlisted_product_name,
+            isUnlistedProduct: cl.is_unlisted_product,
+            priceFeedback: cl.price_feedback,
+          })));
+        }
+        if (remoteProds.length > 0) {
+          setProducts(remoteProds.map((p: any) => ({
+            id: p.id,
+            itemName: p.name,
+            itemDescription: p.code,
+            itemCategory: p.category,
+            itemPrice: Number(p.base_price_etb) || 0,
+            stockQuantity: Number(p.total_stock) || 0,
+          })));
+        }
+        if (remoteNotifs.length > 0) {
+          setNotifications(remoteNotifs.map((n: any) => ({
+            id: n.id,
+            recipientUserId: n.target_user_id || currentUser.id,
+            type: n.notification_type,
+            title: n.title,
+            message: n.message,
+            read: n.is_read,
+            createdAt: n.created_at,
+          })));
+        }
+      } catch (err) {
+        console.warn('Supabase sync offline/unreachable, using local fallback state.', err);
+      }
+    }
+    loadSupabaseData();
+  }, []);
+
+  useRealtimeSync(async (table) => {
+    if (table === 'communications') {
+      const comms = await getCommunications().catch(() => []);
+      if (comms.length > 0) {
+        setCallLogs(comms.map((cl: any) => ({
+          id: cl.id,
+          customerId: cl.customer_id,
+          userId: cl.sales_rep_id || 'u1',
+          dateTime: cl.call_date,
+          durationMinutes: Math.round((cl.duration_seconds || 60) / 60),
+          purpose: cl.purpose || cl.call_status,
+          remark: cl.remarks || '',
+          callStatus: cl.call_status,
+          productId: cl.product_id,
+          unlistedProductName: cl.unlisted_product_name,
+          isUnlistedProduct: cl.is_unlisted_product,
+          priceFeedback: cl.price_feedback,
+        })));
+      }
+    } else if (table === 'customers') {
+      const custs = await getCustomers().catch(() => []);
+      if (custs.length > 0) {
+        setCustomers(custs.map((c: any) => ({
+          id: c.id,
+          customerName: c.name,
+          companyName: c.company_name,
+          phoneNumber: c.phone_number,
+          customerType: 'Old',
+          source: 'Telegram',
+          purposeOfCall: 'Inquiry',
+          customerStage: c.priority === 'Hot' ? 'Lead' : 'Client',
+          assignedUserId: 'u1',
+          branchId: c.main_branch || 'b1',
+          mainBranchId: c.main_branch || 'b1',
+          leadPriority: c.priority || 'Normal',
+          dealValue: Number(c.lifetime_spent_etb) || 0,
+          consecutivePurchaseStreak: {},
+          branchReassignmentLog: [],
+          createdAt: c.created_at,
+          updatedAt: c.created_at,
+        } as Customer)));
+      }
+    } else if (table === 'app_notifications') {
+      const notifs = await getNotifications().catch(() => []);
+      if (notifs.length > 0) {
+        setNotifications(notifs.map((n: any) => ({
+          id: n.id,
+          recipientUserId: n.target_user_id || currentUser.id,
+          type: n.notification_type,
+          title: n.title,
+          message: n.message,
+          read: n.is_read,
+          createdAt: n.created_at,
+        })));
+      }
+    }
+  });
 
   const [isIncomingCallOpen, setIsIncomingCallOpen] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
@@ -305,6 +439,19 @@ export function App() {
     };
     setNotifications(prev => [notif, ...prev]);
     addToast(`New sale recorded: ${newSale.saleAmount.toLocaleString()} ETB`, 'success');
+
+    try {
+      recordSale({
+        customer_id: newSale.customerId,
+        product_id: newSale.itemId,
+        product_name: product?.itemName || 'Equipment',
+        branch_name: customer?.branchId === 'b3' ? 'Piassa Branch' : customer?.branchId === 'b2' ? 'Mexico Branch' : 'Bole Branch',
+        sales_rep_id: currentUser.id,
+        sales_rep_name: currentUser.name,
+        quantity: newSale.quantity,
+        sale_amount_etb: newSale.saleAmount,
+      }).catch(err => console.warn('Supabase recordSale offline fallback:', err));
+    } catch {}
   }, [customers, sales, products, checkAndTriggerReassignment, currentUser.id, addToast]);
 
   const handleSaveCallLog = (newLog: CallLog, updatedCustomer?: Partial<Customer>, newCustomer?: Customer) => {
@@ -351,6 +498,25 @@ export function App() {
     };
     setNotifications(prev => [notifLog, ...prev]);
     addToast(`Call Logged — ${cust?.customerName || 'Client'}: ${newLog.callStatus || newLog.purpose} (${newLog.durationMinutes}m)`, 'success');
+
+    try {
+      logCommunication({
+        customer_id: newLog.customerId,
+        sales_rep_id: currentUser.id,
+        sales_rep_name: currentUser.name,
+        branch_name: currentUser.branchId === 'b3' ? 'Piassa Branch' : currentUser.branchId === 'b2' ? 'Mexico Branch' : 'Bole Branch',
+        call_status: newLog.callStatus || 'Sales',
+        purpose: newLog.purpose,
+        duration_seconds: (newLog.durationMinutes || 5) * 60,
+        customer_type: newCustomer ? 'New' : 'Old',
+        lead_source: newCustomer?.source || 'Telegram',
+        product_id: newLog.productId !== 'unlisted' ? newLog.productId : null,
+        unlisted_product_name: newLog.unlistedProductName,
+        is_unlisted_product: newLog.isUnlistedProduct || false,
+        price_feedback: newLog.priceFeedback || 'not_discussed',
+        remarks: newLog.remark,
+      }).catch(err => console.warn('Supabase logCommunication offline fallback:', err));
+    } catch {}
   };
 
   const handleAddCustomer = (newCust: Customer) => {
@@ -544,7 +710,8 @@ export function App() {
 
       <IncomingCallWidget isOpen={isIncomingCallOpen} onClose={() => setIsIncomingCallOpen(false)}
         customers={customers} branches={branches} currentUser={currentUser} theme={theme}
-        onSaveCallLog={handleSaveCallLog} onSelectCustomer={handleSelectCustomer} products={products} />
+        onSaveCallLog={handleSaveCallLog} onSelectCustomer={handleSelectCustomer} products={products}
+        onRecordSale={handleRecordSale} />
 
       <CommandPalette
         isOpen={isCommandPaletteOpen} onClose={() => setIsCommandPaletteOpen(false)}

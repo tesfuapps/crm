@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Customer, CallLog, User, ProductItem, Branch } from '../types/crm';
+import { Customer, CallLog, User, ProductItem, Branch, ProductSale } from '../types/crm';
 import { PhoneCall, Search, UserPlus, CheckCircle, X, Package } from 'lucide-react';
 
 const REQUIRED_FOLLOWUP_OUTCOMES = ['Pre-order', 'Evaluation', 'Complaint'];
@@ -27,6 +27,7 @@ interface IncomingCallWidgetProps {
   onSaveCallLog: (newLog: CallLog, updatedCustomer?: Partial<Customer>, newCustomer?: Customer) => void;
   onSelectCustomer: (customer: Customer) => void;
   products: ProductItem[];
+  onRecordSale?: (sale: ProductSale) => void;
 }
 
 export const IncomingCallWidget: React.FC<IncomingCallWidgetProps> = ({
@@ -38,6 +39,7 @@ export const IncomingCallWidget: React.FC<IncomingCallWidgetProps> = ({
   theme,
   onSaveCallLog,
   products,
+  onRecordSale,
 }) => {
   const [phoneInput, setPhoneInput] = useState('');
   const [remark, setRemark] = useState('');
@@ -48,6 +50,8 @@ export const IncomingCallWidget: React.FC<IncomingCallWidgetProps> = ({
   const [nextFollowUpDate, setNextFollowUpDate] = useState('');
   const [dateError, setDateError] = useState('');
   const [priceFeedback, setPriceFeedback] = useState<string>('accepted');
+  const [saleQuantity, setSaleQuantity] = useState(1);
+  const [saleAmount, setSaleAmount] = useState('');
 
   // New customer fields if not found
   const [newName, setNewName] = useState('');
@@ -106,6 +110,21 @@ export const IncomingCallWidget: React.FC<IncomingCallWidgetProps> = ({
 
     const customerUpdate: Partial<Customer> = needsFollowUp ? { nextFollowUpDate: nextFollowUpDate.trim() } : {};
     onSaveCallLog(newLog, needsFollowUp ? customerUpdate : undefined);
+
+    if (outcome === 'Sales' && onRecordSale && matchedCustomer) {
+      const product = selectedProductId !== 'none' && selectedProductId !== 'unlisted'
+        ? products.find(p => p.id === selectedProductId) : null;
+      onRecordSale({
+        id: 'ps_' + Date.now(),
+        customerId: matchedCustomer.id,
+        itemId: selectedProductId !== 'none' && selectedProductId !== 'unlisted' ? selectedProductId : 'unlisted_' + Date.now(),
+        quantity: saleQuantity,
+        saleDate: new Date().toISOString(),
+        saleAmount: Number(saleAmount) || 0,
+        salesRepId: currentUser.id,
+        status: 'confirmed',
+      });
+    }
     setPhoneInput('');
     setRemark('');
     setSelectedProductId('none');
@@ -163,6 +182,19 @@ export const IncomingCallWidget: React.FC<IncomingCallWidgetProps> = ({
     };
 
     onSaveCallLog(newLog, needsFollowUp ? { nextFollowUpDate: nextFollowUpDate.trim() } : undefined, newCust);
+
+    if (outcome === 'Sales' && onRecordSale) {
+      onRecordSale({
+        id: 'ps_' + Date.now(),
+        customerId: newCustId,
+        itemId: selectedProductId !== 'none' && selectedProductId !== 'unlisted' ? selectedProductId : 'unlisted_' + Date.now(),
+        quantity: saleQuantity,
+        saleDate: new Date().toISOString(),
+        saleAmount: Number(saleAmount) || 0,
+        salesRepId: currentUser.id,
+        status: 'confirmed',
+      });
+    }
     setPhoneInput('');
     setRemark('');
     setNewName('');
@@ -306,6 +338,39 @@ export const IncomingCallWidget: React.FC<IncomingCallWidgetProps> = ({
                         </div>
                       )}
                     </div>
+
+                    {outcome === 'Sales' && (
+                      <div className="p-3 rounded-xl border border-emerald-500/30 bg-emerald-500/5 space-y-3">
+                        <div className="flex items-center gap-2 text-[11px] font-bold uppercase text-emerald-400">
+                          <Package className="w-3.5 h-3.5" />
+                          <span>Quick Sale Details</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className={`block text-[11px] font-bold uppercase mb-1 ${isDark ? 'text-neutral-300' : 'text-slate-700'}`}>Quantity</label>
+                            <input
+                              type="number"
+                              min="1"
+                              value={saleQuantity}
+                              onChange={(e) => setSaleQuantity(Number(e.target.value))}
+                              className={`${inputClasses} font-mono font-bold`}
+                            />
+                          </div>
+                          <div>
+                            <label className={`block text-[11px] font-bold uppercase mb-1 ${isDark ? 'text-neutral-300' : 'text-slate-700'}`}>Sale Amount (ETB)</label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={saleAmount}
+                              onChange={(e) => setSaleAmount(e.target.value)}
+                              placeholder="e.g. 45000"
+                              className={`${inputClasses} font-mono font-bold`}
+                            />
+                          </div>
+                        </div>
+                        <p className="text-[10px] text-emerald-400 font-medium">✅ Sale will be recorded alongside this call log in one step.</p>
+                      </div>
+                    )}
 
                     {needsFollowUp && (
                       <div>
@@ -479,6 +544,39 @@ export const IncomingCallWidget: React.FC<IncomingCallWidgetProps> = ({
                         </div>
                       )}
                     </div>
+
+                    {outcome === 'Sales' && (
+                      <div className="p-3 rounded-xl border border-emerald-500/30 bg-emerald-500/5 space-y-3">
+                        <div className="flex items-center gap-2 text-[11px] font-bold uppercase text-emerald-400">
+                          <Package className="w-3.5 h-3.5" />
+                          <span>Quick Sale Details</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className={`block text-[11px] font-bold uppercase mb-1 ${isDark ? 'text-neutral-300' : 'text-slate-700'}`}>Quantity</label>
+                            <input
+                              type="number"
+                              min="1"
+                              value={saleQuantity}
+                              onChange={(e) => setSaleQuantity(Number(e.target.value))}
+                              className={`${inputClasses} font-mono font-bold`}
+                            />
+                          </div>
+                          <div>
+                            <label className={`block text-[11px] font-bold uppercase mb-1 ${isDark ? 'text-neutral-300' : 'text-slate-700'}`}>Sale Amount (ETB)</label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={saleAmount}
+                              onChange={(e) => setSaleAmount(e.target.value)}
+                              placeholder="e.g. 45000"
+                              className={`${inputClasses} font-mono font-bold`}
+                            />
+                          </div>
+                        </div>
+                        <p className="text-[10px] text-emerald-400 font-medium">✅ Sale will be recorded alongside this call log in one step.</p>
+                      </div>
+                    )}
 
                     {needsFollowUp && (
                       <div>
