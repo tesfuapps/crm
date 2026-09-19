@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { ProductItem, ProductSale, Customer, Branch, User } from '../types/crm';
-import { Package, Plus, DollarSign, Layers, ShoppingBag, Trash2, Download, Filter } from 'lucide-react';
+import { Package, Plus, DollarSign, Layers, ShoppingBag, Trash2, Download, Filter, Calendar, X } from 'lucide-react';
+import * as XLSX from 'xlsx';
 
 interface ProductStoreViewProps {
   products: ProductItem[];
@@ -31,6 +32,9 @@ export const ProductStoreView: React.FC<ProductStoreViewProps> = ({
   const [saleItemId, setSaleItemId] = useState(products[0]?.id || '');
   const [saleQuantity, setSaleQuantity] = useState(1);
   const [salesFilterPeriod, setSalesFilterPeriod] = useState<string>('All-Time');
+  const [customRangeFrom, setCustomRangeFrom] = useState('');
+  const [customRangeTo, setCustomRangeTo] = useState('');
+  const [showCustomRange, setShowCustomRange] = useState(false);
 
   const now = new Date();
   const todayStr = now.toISOString().split('T')[0];
@@ -43,9 +47,15 @@ export const ProductStoreView: React.FC<ProductStoreViewProps> = ({
       if (salesFilterPeriod === 'Today') return sale.saleDate === todayStr;
       if (salesFilterPeriod === 'This Week') return saleDate >= weekAgo;
       if (salesFilterPeriod === 'This Month') return saleDate >= monthAgo;
+      if (salesFilterPeriod === 'Custom Range' && customRangeFrom && customRangeTo) {
+        const from = new Date(customRangeFrom);
+        const to = new Date(customRangeTo);
+        to.setHours(23, 59, 59, 999);
+        return saleDate >= from && saleDate <= to;
+      }
       return true;
     });
-  }, [sales, salesFilterPeriod]);
+  }, [sales, salesFilterPeriod, customRangeFrom, customRangeTo]);
 
   const cardBg = isDark ? 'bg-[#18181b] border-zinc-800/60' : 'bg-white border-slate-200';
   const cardText = isDark ? 'text-zinc-100' : 'text-slate-900';
@@ -129,6 +139,35 @@ export const ProductStoreView: React.FC<ProductStoreViewProps> = ({
     document.body.removeChild(link);
   };
 
+  const exportSalesToExcel = () => {
+    const rows = filteredSales.map(sale => {
+      const cust = customers.find(c => c.id === sale.customerId);
+      const prod = products.find(p => p.id === sale.itemId);
+      const branch = branches.find(b => b.id === cust?.branchId);
+      const rep = users.find(u => u.id === sale.salesRepId);
+      const fulfillment = sale.fulfillment_type === 'pickup' ? 'Pickup' : sale.addis_delivery_type === 'own_delivery' ? 'Own Delivery' : sale.addis_delivery_type === 'outsourced' ? sale.outsourced_provider || 'Outsourced' : sale.delivery_scope === 'province' ? sale.carrier || 'Bus Cargo' : 'N/A';
+      const deliveryDetails = sale.vehicle_plate_number || sale.ticketNumber || sale.driver_phone || '';
+      return {
+        'Transaction ID': sale.id,
+        'Date': sale.saleDate,
+        'Customer Name': cust?.customerName || 'Unknown',
+        'Company': cust?.companyName || '',
+        'Product Item': prod?.itemName || 'Product',
+        'Category': prod?.itemCategory || '',
+        'Quantity': sale.quantity,
+        'Sale Amount (ETB)': sale.saleAmount,
+        'Branch': branch?.name || '',
+        'Sales Rep': rep?.name || '',
+        'Fulfillment': fulfillment,
+        'Delivery Details': deliveryDetails,
+      };
+    });
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Sales');
+    XLSX.writeFile(wb, `TTM_Sales_${salesFilterPeriod.replace(/\s/g, '_')}_${todayStr}.xlsx`);
+  };
+
   return (
     <div className="space-y-6">
       <div className={`p-6 rounded-xl border flex flex-col md:flex-row md:items-center justify-between gap-4 ${cardBg}`}>
@@ -178,29 +217,52 @@ export const ProductStoreView: React.FC<ProductStoreViewProps> = ({
 
         {/* Filter & Export Bar */}
         <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-[#161616] border border-neutral-800 rounded-xl mb-4">
-          <div className="flex items-center gap-1.5 text-xs">
+          <div className="flex items-center gap-1.5 text-xs flex-wrap">
             <Filter className="w-3.5 h-3.5 text-neutral-500" />
-            {['Today', 'This Week', 'This Month', 'All-Time'].map((p) => (
+            {['Today', 'This Week', 'This Month', 'Custom Range', 'All-Time'].map((p) => (
               <button
                 key={p}
-                onClick={() => setSalesFilterPeriod(p)}
+                onClick={() => {
+                  setSalesFilterPeriod(p);
+                  if (p === 'Custom Range') setShowCustomRange(true);
+                }}
                 className={`px-3 py-1.5 rounded-lg font-medium transition-all ${
                   salesFilterPeriod === p
                     ? 'bg-amber-500/20 text-amber-400 font-bold border border-amber-500/40'
                     : 'text-neutral-400 hover:text-neutral-200'
                 }`}
               >
+                {p === 'Custom Range' && <Calendar className="w-3 h-3 inline mr-1" />}
                 {p}
               </button>
             ))}
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-[11px] text-neutral-500 font-mono">{filteredSales.length} transactions</span>
+            <span className="text-[11px] text-neutral-500 font-mono">{filteredSales.length} txns</span>
             <button onClick={exportSalesToCSV} className="px-3 py-1.5 bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 text-xs font-medium text-neutral-300 rounded-lg flex items-center gap-1.5">
-              <Download className="w-3 h-3" /> Export CSV
+              <Download className="w-3 h-3" /> CSV
+            </button>
+            <button onClick={exportSalesToExcel} className="px-3 py-1.5 bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-700/50 text-xs font-medium text-emerald-300 rounded-lg flex items-center gap-1.5">
+              <Download className="w-3 h-3" /> Excel
             </button>
           </div>
         </div>
+
+        {/* Custom Range Date Picker */}
+        {salesFilterPeriod === 'Custom Range' && (
+          <div className="flex items-center gap-3 p-3 bg-[#161616] border border-amber-800/40 rounded-xl mb-4">
+            <Calendar className="w-4 h-4 text-amber-400" />
+            <span className="text-xs text-zinc-400">From:</span>
+            <input type="date" value={customRangeFrom} onChange={(e) => setCustomRangeFrom(e.target.value)} className={`px-2.5 py-1.5 rounded-lg text-xs border ${inputBg} focus:outline-none focus:ring-1 focus:ring-amber-600`} />
+            <span className="text-xs text-zinc-400">To:</span>
+            <input type="date" value={customRangeTo} onChange={(e) => setCustomRangeTo(e.target.value)} className={`px-2.5 py-1.5 rounded-lg text-xs border ${inputBg} focus:outline-none focus:ring-1 focus:ring-amber-600`} />
+            {customRangeFrom && customRangeTo && (
+              <button onClick={() => { setCustomRangeFrom(''); setCustomRangeTo(''); }} className="text-zinc-500 hover:text-zinc-300 p-1">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+        )}
 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">

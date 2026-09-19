@@ -685,7 +685,7 @@ export function App() {
               sales={sales} theme={theme} />
           )}
           {activeTab === 'reports' && (
-            <ReportsView customers={customers} callLogs={callLogs} sales={sales} branches={branches}
+            <ReportsView customers={customers} callLogs={callLogs} sales={sales} branches={branches} products={products}
               selectedBranchId={selectedBranchId} theme={theme} />
           )}
           {activeTab === 'products' && (
