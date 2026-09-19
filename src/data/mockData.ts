@@ -1,4 +1,5 @@
 import { Branch, User, Customer, CallLog, ProductItem, ProductSale, Notification, Label, FilterPreset } from '../types/crm';
+import { OFFICIAL_TTM_CATALOG } from './officialCatalog';
 
 export const INITIAL_BRANCHES: Branch[] = [
   { id: 'b1', name: 'Bole Branch', subCity: 'Bole' },
@@ -15,17 +16,7 @@ export const INITIAL_USERS: User[] = [
   { id: 'u6', name: 'Mekdes Zewdu', role: 'Sales Agent', branchId: 'b3', email: 'mekdes.z@ttmcrm.et' },
 ];
 
-export const INITIAL_PRODUCTS: ProductItem[] = [
-  { id: 'p1', itemName: 'Mug Press Machine Pro', itemDescription: 'Digital mug heat press machine for ceramic & glass mugs', itemCategory: 'Mug Printing', itemPrice: 12500, stockQuantity: 30 },
-  { id: 'p2', itemName: 'Blank Ceramic Mugs (Box of 36)', itemDescription: 'AAA Grade sublimation coated white ceramic mugs', itemCategory: 'Mug Printing', itemPrice: 4200, stockQuantity: 120 },
-  { id: 'p3', itemName: '5-in-1 Combo Heat Press Machine', itemDescription: 'Multi-function heat press for t-shirts, caps, plates & mugs', itemCategory: 'T-Shirt & Cap Printing', itemPrice: 28000, stockQuantity: 18 },
-  { id: 'p4', itemName: 'Sublimation T-Shirt Blanks (Pack of 10)', itemDescription: 'Polyester-cotton blend blank shirts for custom prints', itemCategory: 'T-Shirt & Cap Printing', itemPrice: 3500, stockQuantity: 250 },
-  { id: 'p5', itemName: 'Flash Stamp Making Machine', itemDescription: 'Compact machine for instant pre-inked rubber stamps', itemCategory: 'Stamp Making', itemPrice: 19500, stockQuantity: 15 },
-  { id: 'p6', itemName: 'Self-Inking Stamp Mounts & Rubber Kit', itemDescription: 'Assorted pocket and office stamp mounts with rubber sheets', itemCategory: 'Stamp Making', itemPrice: 2800, stockQuantity: 80 },
-  { id: 'p7', itemName: 'Sublimation Glass Photo Frame', itemDescription: 'Beveled edge printable glass frame with stands', itemCategory: 'Sublimation Gifts', itemPrice: 1500, stockQuantity: 65 },
-  { id: 'p8', itemName: 'Printable Metal Keychains (Pack of 50)', itemDescription: 'Sublimation rectangle & round metal keychains', itemCategory: 'Sublimation Gifts', itemPrice: 2200, stockQuantity: 90 },
-  { id: 'p9', itemName: 'PU Leather Photo Album Blank', itemDescription: 'Customizable cover sublimation photo album', itemCategory: 'Sublimation Gifts', itemPrice: 3800, stockQuantity: 40 },
-];
+export const INITIAL_PRODUCTS: ProductItem[] = OFFICIAL_TTM_CATALOG;
 
 export const INITIAL_CUSTOMERS: Customer[] = [
   { id: 'c1', customerName: 'Ato Samuel Kebede', companyName: 'Habesha Gift & Print Shop', phoneNumber: '0911223344', customerType: 'Old', source: 'Telegram', purposeOfCall: '5-in-1 Heat Press Purchase Order', customerStage: 'Client', assignedUserId: 'u3', branchId: 'b1', mainBranchId: 'b1', leadPriority: 'Hot', dealValue: 31500, createdAt: '2026-09-01T10:30:00Z', updatedAt: '2026-09-16T10:30:00Z', consecutivePurchaseStreak: {}, branchReassignmentLog: [] },
@@ -114,11 +105,11 @@ export const INITIAL_CALL_LOGS: CallLog[] = [
 ];
 
 export const INITIAL_SALES: ProductSale[] = [
-  { id: 's1', customerId: 'c1', itemId: 'p3', quantity: 1, saleDate: '2026-09-16', saleAmount: 28000 },
-  { id: 's2', customerId: 'c5', itemId: 'p2', quantity: 1, saleDate: '2026-09-16', saleAmount: 4200 },
-  { id: 's3', customerId: 'c6', itemId: 'p1', quantity: 1, saleDate: '2026-09-16', saleAmount: 12500 },
-  { id: 's4', customerId: 'c10', itemId: 'p5', quantity: 1, saleDate: '2026-09-15', saleAmount: 19500 },
-  { id: 's5', customerId: 'c15', itemId: 'p6', quantity: 2, saleDate: '2026-09-15', saleAmount: 5600 },
+  { id: 's1', customerId: 'c1', itemId: 'mch-009', quantity: 1, saleDate: '2026-09-16', saleAmount: 28000 },
+  { id: 's2', customerId: 'c5', itemId: 'mug-001', quantity: 1, saleDate: '2026-09-16', saleAmount: 4200 },
+  { id: 's3', customerId: 'c6', itemId: 'mch-001', quantity: 1, saleDate: '2026-09-16', saleAmount: 25000 },
+  { id: 's4', customerId: 'c10', itemId: 'mch-003', quantity: 1, saleDate: '2026-09-15', saleAmount: 19500 },
+  { id: 's5', customerId: 'c15', itemId: 'stp-001', quantity: 10, saleDate: '2026-09-15', saleAmount: 3200 },
 ];
 
 export const INITIAL_NOTIFICATIONS: Notification[] = [
