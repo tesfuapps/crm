@@ -55,6 +55,14 @@ export const IncomingCallWidget: React.FC<IncomingCallWidgetProps> = ({
   const [cargoCarrier, setCargoCarrier] = useState('');
   const [cargoTicket, setCargoTicket] = useState('');
   const [cargoCity, setCargoCity] = useState('');
+  const [fulfillmentType, setFulfillmentType] = useState<'pickup' | 'delivery'>('delivery');
+  const [deliveryScope, setDeliveryScope] = useState<'addis_ababa' | 'province'>('addis_ababa');
+  const [addisDeliveryType, setAddisDeliveryType] = useState<'own_delivery' | 'outsourced'>('own_delivery');
+  const [outsourcedProvider, setOutsourcedProvider] = useState('Feres');
+  const [deliveryFeePaidBy, setDeliveryFeePaidBy] = useState<'customer' | 'ttm_free'>('customer');
+  const [driverName, setDriverName] = useState('');
+  const [driverPhone, setDriverPhone] = useState('');
+  const [vehiclePlate, setVehiclePlate] = useState('');
 
   // New customer fields if not found
   const [newName, setNewName] = useState('');
@@ -129,6 +137,14 @@ export const IncomingCallWidget: React.FC<IncomingCallWidgetProps> = ({
         carrier: cargoCarrier || undefined,
         ticketNumber: cargoTicket || undefined,
         destinationCity: cargoCity || undefined,
+        fulfillment_type: fulfillmentType,
+        delivery_scope: fulfillmentType === 'delivery' ? deliveryScope : undefined,
+        addis_delivery_type: deliveryScope === 'addis_ababa' ? addisDeliveryType : undefined,
+        outsourced_provider: addisDeliveryType === 'outsourced' ? outsourcedProvider : undefined,
+        delivery_fee_paid_by: addisDeliveryType === 'outsourced' ? deliveryFeePaidBy : undefined,
+        driver_name: driverName || undefined,
+        driver_phone: driverPhone || undefined,
+        vehicle_plate_number: vehiclePlate || undefined,
       });
     }
     setPhoneInput('');
@@ -142,6 +158,14 @@ export const IncomingCallWidget: React.FC<IncomingCallWidgetProps> = ({
     setCargoCarrier('');
     setCargoTicket('');
     setCargoCity('');
+    setFulfillmentType('delivery');
+    setDeliveryScope('addis_ababa');
+    setAddisDeliveryType('own_delivery');
+    setOutsourcedProvider('Feres');
+    setDeliveryFeePaidBy('customer');
+    setDriverName('');
+    setDriverPhone('');
+    setVehiclePlate('');
     onClose();
   };
 
@@ -207,6 +231,14 @@ export const IncomingCallWidget: React.FC<IncomingCallWidgetProps> = ({
         carrier: cargoCarrier || undefined,
         ticketNumber: cargoTicket || undefined,
         destinationCity: cargoCity || undefined,
+        fulfillment_type: fulfillmentType,
+        delivery_scope: fulfillmentType === 'delivery' ? deliveryScope : undefined,
+        addis_delivery_type: deliveryScope === 'addis_ababa' ? addisDeliveryType : undefined,
+        outsourced_provider: addisDeliveryType === 'outsourced' ? outsourcedProvider : undefined,
+        delivery_fee_paid_by: addisDeliveryType === 'outsourced' ? deliveryFeePaidBy : undefined,
+        driver_name: driverName || undefined,
+        driver_phone: driverPhone || undefined,
+        vehicle_plate_number: vehiclePlate || undefined,
       });
     }
     setPhoneInput('');
@@ -222,6 +254,14 @@ export const IncomingCallWidget: React.FC<IncomingCallWidgetProps> = ({
     setCargoCarrier('');
     setCargoTicket('');
     setCargoCity('');
+    setFulfillmentType('delivery');
+    setDeliveryScope('addis_ababa');
+    setAddisDeliveryType('own_delivery');
+    setOutsourcedProvider('Feres');
+    setDeliveryFeePaidBy('customer');
+    setDriverName('');
+    setDriverPhone('');
+    setVehiclePlate('');
     onClose();
   };
 
@@ -387,32 +427,112 @@ export const IncomingCallWidget: React.FC<IncomingCallWidgetProps> = ({
                             />
                           </div>
                         </div>
-                        <p className="text-[10px] text-emerald-400 font-medium">✅ Sale will be recorded alongside this call log in one step.</p>
+
+                        {/* Fulfillment Type */}
                         <div className="pt-2 border-t border-emerald-500/20 space-y-2">
-                          <p className="text-[10px] font-bold uppercase text-emerald-500/70 tracking-wider">Bus Cargo Tracker (Optional)</p>
-                          <div className="grid grid-cols-3 gap-2">
-                            <div>
-                              <label className={`block text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-neutral-400' : 'text-slate-600'}`}>Carrier</label>
-                              <select value={cargoCarrier} onChange={(e) => setCargoCarrier(e.target.value)} className={`${inputClasses} text-[11px]`}>
-                                <option value="">None</option>
-                                <option value="Selam Bus">Selam Bus</option>
-                                <option value="Sky Bus">Sky Bus</option>
-                                <option value="Libus">Libus</option>
-                                <option value="Golden Bus">Golden Bus</option>
-                                <option value="Habesha Bus">Habesha Bus</option>
-                                <option value="Other">Other</option>
-                              </select>
-                            </div>
-                            <div>
-                              <label className={`block text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-neutral-400' : 'text-slate-600'}`}>Ticket #</label>
-                              <input type="text" value={cargoTicket} onChange={(e) => setCargoTicket(e.target.value)} placeholder="e.g. 48192" className={`${inputClasses} text-[11px] font-mono`} />
-                            </div>
-                            <div>
-                              <label className={`block text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-neutral-400' : 'text-slate-600'}`}>City</label>
-                              <input type="text" value={cargoCity} onChange={(e) => setCargoCity(e.target.value)} placeholder="e.g. Hawassa" className={`${inputClasses} text-[11px]`} />
-                            </div>
+                          <p className="text-[10px] font-bold uppercase text-emerald-500/70 tracking-wider">Fulfillment</p>
+                          <div className="flex gap-2">
+                            <button type="button" onClick={() => setFulfillmentType('pickup')} className={`flex-1 py-1.5 text-[11px] rounded-lg border font-medium transition-all ${fulfillmentType === 'pickup' ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300 font-bold' : 'bg-[#121212] border-neutral-700 text-neutral-400'}`}>
+                              📋 Pickup at Showroom
+                            </button>
+                            <button type="button" onClick={() => setFulfillmentType('delivery')} className={`flex-1 py-1.5 text-[11px] rounded-lg border font-medium transition-all ${fulfillmentType === 'delivery' ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300 font-bold' : 'bg-[#121212] border-neutral-700 text-neutral-400'}`}>
+                              🚚 Delivery
+                            </button>
                           </div>
                         </div>
+
+                        {fulfillmentType === 'delivery' && (
+                          <div className="space-y-2.5 pt-1">
+                            <p className="text-[10px] font-bold uppercase text-emerald-500/70 tracking-wider">Delivery Scope</p>
+                            <div className="flex gap-2">
+                              <button type="button" onClick={() => setDeliveryScope('addis_ababa')} className={`flex-1 py-1.5 text-[11px] rounded-lg border font-medium transition-all ${deliveryScope === 'addis_ababa' ? 'bg-amber-500/20 border-amber-500 text-amber-300 font-bold' : 'bg-[#121212] border-neutral-700 text-neutral-400'}`}>
+                                🏙️ Addis Ababa
+                              </button>
+                              <button type="button" onClick={() => setDeliveryScope('province')} className={`flex-1 py-1.5 text-[11px] rounded-lg border font-medium transition-all ${deliveryScope === 'province' ? 'bg-amber-500/20 border-amber-500 text-amber-300 font-bold' : 'bg-[#121212] border-neutral-700 text-neutral-400'}`}>
+                                🚌 Regional / Province
+                              </button>
+                            </div>
+
+                            {deliveryScope === 'addis_ababa' && (
+                              <div className="space-y-2.5 pt-1">
+                                <div className="flex gap-2">
+                                  <button type="button" onClick={() => setAddisDeliveryType('own_delivery')} className={`flex-1 py-1.5 text-[11px] rounded-lg border font-medium transition-all ${addisDeliveryType === 'own_delivery' ? 'bg-amber-500/20 border-amber-500 text-amber-300 font-bold' : 'bg-[#121212] border-neutral-700 text-neutral-400'}`}>
+                                    🏢 Own Delivery (In-House)
+                                  </button>
+                                  <button type="button" onClick={() => setAddisDeliveryType('outsourced')} className={`flex-1 py-1.5 text-[11px] rounded-lg border font-medium transition-all ${addisDeliveryType === 'outsourced' ? 'bg-amber-500/20 border-amber-500 text-amber-300 font-bold' : 'bg-[#121212] border-neutral-700 text-neutral-400'}`}>
+                                    🚗 Outsourced (Feres / RIDE)
+                                  </button>
+                                </div>
+
+                                {addisDeliveryType === 'outsourced' && (
+                                  <div className="grid grid-cols-2 gap-2 text-[11px]">
+                                    <div>
+                                      <label className={`block text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-neutral-400' : 'text-slate-600'}`}>Service Provider</label>
+                                      <select value={outsourcedProvider} onChange={(e) => setOutsourcedProvider(e.target.value)} className={`${inputClasses} text-[11px]`}>
+                                        <option value="Feres">Feres Delivery</option>
+                                        <option value="RIDE">RIDE Delivery</option>
+                                        <option value="Yango">Yango Delivery</option>
+                                        <option value="Motorcycle Courier">Local Motor Courier</option>
+                                      </select>
+                                    </div>
+                                    <div>
+                                      <label className={`block text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-neutral-400' : 'text-slate-600'}`}>Delivery Fee</label>
+                                      <select value={deliveryFeePaidBy} onChange={(e) => setDeliveryFeePaidBy(e.target.value as any)} className={`${inputClasses} text-[11px]`}>
+                                        <option value="customer">Paid by Customer</option>
+                                        <option value="ttm_free">Free (Covered by TTM)</option>
+                                      </select>
+                                    </div>
+                                  </div>
+                                )}
+
+                                <div className="grid grid-cols-3 gap-2 text-[11px]">
+                                  <div>
+                                    <label className={`block text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-neutral-400' : 'text-slate-600'}`}>Driver Name</label>
+                                    <input type="text" value={driverName} onChange={(e) => setDriverName(e.target.value)} placeholder="Driver name" className={`${inputClasses} text-[11px]`} />
+                                  </div>
+                                  <div>
+                                    <label className={`block text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-neutral-400' : 'text-slate-600'}`}>Driver Phone</label>
+                                    <input type="text" value={driverPhone} onChange={(e) => setDriverPhone(e.target.value)} placeholder="09..." className={`${inputClasses} text-[11px] font-mono`} />
+                                  </div>
+                                  <div>
+                                    <label className={`block text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-neutral-400' : 'text-slate-600'}`}>Plate Number</label>
+                                    <input type="text" value={vehiclePlate} onChange={(e) => setVehiclePlate(e.target.value)} placeholder="e.g. 3-48291 AA" className={`${inputClasses} text-[11px] font-mono`} />
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                            {deliveryScope === 'province' && (
+                              <div className="space-y-2 pt-1">
+                                <p className="text-[10px] font-bold uppercase text-emerald-500/70 tracking-wider">Bus Cargo Tracker</p>
+                                <div className="grid grid-cols-3 gap-2">
+                                  <div>
+                                    <label className={`block text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-neutral-400' : 'text-slate-600'}`}>Carrier</label>
+                                    <select value={cargoCarrier} onChange={(e) => setCargoCarrier(e.target.value)} className={`${inputClasses} text-[11px]`}>
+                                      <option value="">None</option>
+                                      <option value="Selam Bus">Selam Bus</option>
+                                      <option value="Sky Bus">Sky Bus</option>
+                                      <option value="Libus">Libus</option>
+                                      <option value="Golden Bus">Golden Bus</option>
+                                      <option value="Habesha Bus">Habesha Bus</option>
+                                      <option value="Other">Other</option>
+                                    </select>
+                                  </div>
+                                  <div>
+                                    <label className={`block text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-neutral-400' : 'text-slate-600'}`}>Ticket #</label>
+                                    <input type="text" value={cargoTicket} onChange={(e) => setCargoTicket(e.target.value)} placeholder="e.g. 48192" className={`${inputClasses} text-[11px] font-mono`} />
+                                  </div>
+                                  <div>
+                                    <label className={`block text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-neutral-400' : 'text-slate-600'}`}>City</label>
+                                    <input type="text" value={cargoCity} onChange={(e) => setCargoCity(e.target.value)} placeholder="e.g. Hawassa" className={`${inputClasses} text-[11px]`} />
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        <p className="text-[10px] text-emerald-400 font-medium pt-1">✅ Sale + delivery details recorded in one step.</p>
                       </div>
                     )}
 
@@ -618,32 +738,112 @@ export const IncomingCallWidget: React.FC<IncomingCallWidgetProps> = ({
                             />
                           </div>
                         </div>
-                        <p className="text-[10px] text-emerald-400 font-medium">✅ Sale will be recorded alongside this call log in one step.</p>
+
+                        {/* Fulfillment Type */}
                         <div className="pt-2 border-t border-emerald-500/20 space-y-2">
-                          <p className="text-[10px] font-bold uppercase text-emerald-500/70 tracking-wider">Bus Cargo Tracker (Optional)</p>
-                          <div className="grid grid-cols-3 gap-2">
-                            <div>
-                              <label className={`block text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-neutral-400' : 'text-slate-600'}`}>Carrier</label>
-                              <select value={cargoCarrier} onChange={(e) => setCargoCarrier(e.target.value)} className={`${inputClasses} text-[11px]`}>
-                                <option value="">None</option>
-                                <option value="Selam Bus">Selam Bus</option>
-                                <option value="Sky Bus">Sky Bus</option>
-                                <option value="Libus">Libus</option>
-                                <option value="Golden Bus">Golden Bus</option>
-                                <option value="Habesha Bus">Habesha Bus</option>
-                                <option value="Other">Other</option>
-                              </select>
-                            </div>
-                            <div>
-                              <label className={`block text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-neutral-400' : 'text-slate-600'}`}>Ticket #</label>
-                              <input type="text" value={cargoTicket} onChange={(e) => setCargoTicket(e.target.value)} placeholder="e.g. 48192" className={`${inputClasses} text-[11px] font-mono`} />
-                            </div>
-                            <div>
-                              <label className={`block text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-neutral-400' : 'text-slate-600'}`}>City</label>
-                              <input type="text" value={cargoCity} onChange={(e) => setCargoCity(e.target.value)} placeholder="e.g. Hawassa" className={`${inputClasses} text-[11px]`} />
-                            </div>
+                          <p className="text-[10px] font-bold uppercase text-emerald-500/70 tracking-wider">Fulfillment</p>
+                          <div className="flex gap-2">
+                            <button type="button" onClick={() => setFulfillmentType('pickup')} className={`flex-1 py-1.5 text-[11px] rounded-lg border font-medium transition-all ${fulfillmentType === 'pickup' ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300 font-bold' : 'bg-[#121212] border-neutral-700 text-neutral-400'}`}>
+                              📋 Pickup at Showroom
+                            </button>
+                            <button type="button" onClick={() => setFulfillmentType('delivery')} className={`flex-1 py-1.5 text-[11px] rounded-lg border font-medium transition-all ${fulfillmentType === 'delivery' ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300 font-bold' : 'bg-[#121212] border-neutral-700 text-neutral-400'}`}>
+                              🚚 Delivery
+                            </button>
                           </div>
                         </div>
+
+                        {fulfillmentType === 'delivery' && (
+                          <div className="space-y-2.5 pt-1">
+                            <p className="text-[10px] font-bold uppercase text-emerald-500/70 tracking-wider">Delivery Scope</p>
+                            <div className="flex gap-2">
+                              <button type="button" onClick={() => setDeliveryScope('addis_ababa')} className={`flex-1 py-1.5 text-[11px] rounded-lg border font-medium transition-all ${deliveryScope === 'addis_ababa' ? 'bg-amber-500/20 border-amber-500 text-amber-300 font-bold' : 'bg-[#121212] border-neutral-700 text-neutral-400'}`}>
+                                🏙️ Addis Ababa
+                              </button>
+                              <button type="button" onClick={() => setDeliveryScope('province')} className={`flex-1 py-1.5 text-[11px] rounded-lg border font-medium transition-all ${deliveryScope === 'province' ? 'bg-amber-500/20 border-amber-500 text-amber-300 font-bold' : 'bg-[#121212] border-neutral-700 text-neutral-400'}`}>
+                                🚌 Regional / Province
+                              </button>
+                            </div>
+
+                            {deliveryScope === 'addis_ababa' && (
+                              <div className="space-y-2.5 pt-1">
+                                <div className="flex gap-2">
+                                  <button type="button" onClick={() => setAddisDeliveryType('own_delivery')} className={`flex-1 py-1.5 text-[11px] rounded-lg border font-medium transition-all ${addisDeliveryType === 'own_delivery' ? 'bg-amber-500/20 border-amber-500 text-amber-300 font-bold' : 'bg-[#121212] border-neutral-700 text-neutral-400'}`}>
+                                    🏢 Own Delivery (In-House)
+                                  </button>
+                                  <button type="button" onClick={() => setAddisDeliveryType('outsourced')} className={`flex-1 py-1.5 text-[11px] rounded-lg border font-medium transition-all ${addisDeliveryType === 'outsourced' ? 'bg-amber-500/20 border-amber-500 text-amber-300 font-bold' : 'bg-[#121212] border-neutral-700 text-neutral-400'}`}>
+                                    🚗 Outsourced (Feres / RIDE)
+                                  </button>
+                                </div>
+
+                                {addisDeliveryType === 'outsourced' && (
+                                  <div className="grid grid-cols-2 gap-2 text-[11px]">
+                                    <div>
+                                      <label className={`block text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-neutral-400' : 'text-slate-600'}`}>Service Provider</label>
+                                      <select value={outsourcedProvider} onChange={(e) => setOutsourcedProvider(e.target.value)} className={`${inputClasses} text-[11px]`}>
+                                        <option value="Feres">Feres Delivery</option>
+                                        <option value="RIDE">RIDE Delivery</option>
+                                        <option value="Yango">Yango Delivery</option>
+                                        <option value="Motorcycle Courier">Local Motor Courier</option>
+                                      </select>
+                                    </div>
+                                    <div>
+                                      <label className={`block text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-neutral-400' : 'text-slate-600'}`}>Delivery Fee</label>
+                                      <select value={deliveryFeePaidBy} onChange={(e) => setDeliveryFeePaidBy(e.target.value as any)} className={`${inputClasses} text-[11px]`}>
+                                        <option value="customer">Paid by Customer</option>
+                                        <option value="ttm_free">Free (Covered by TTM)</option>
+                                      </select>
+                                    </div>
+                                  </div>
+                                )}
+
+                                <div className="grid grid-cols-3 gap-2 text-[11px]">
+                                  <div>
+                                    <label className={`block text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-neutral-400' : 'text-slate-600'}`}>Driver Name</label>
+                                    <input type="text" value={driverName} onChange={(e) => setDriverName(e.target.value)} placeholder="Driver name" className={`${inputClasses} text-[11px]`} />
+                                  </div>
+                                  <div>
+                                    <label className={`block text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-neutral-400' : 'text-slate-600'}`}>Driver Phone</label>
+                                    <input type="text" value={driverPhone} onChange={(e) => setDriverPhone(e.target.value)} placeholder="09..." className={`${inputClasses} text-[11px] font-mono`} />
+                                  </div>
+                                  <div>
+                                    <label className={`block text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-neutral-400' : 'text-slate-600'}`}>Plate Number</label>
+                                    <input type="text" value={vehiclePlate} onChange={(e) => setVehiclePlate(e.target.value)} placeholder="e.g. 3-48291 AA" className={`${inputClasses} text-[11px] font-mono`} />
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                            {deliveryScope === 'province' && (
+                              <div className="space-y-2 pt-1">
+                                <p className="text-[10px] font-bold uppercase text-emerald-500/70 tracking-wider">Bus Cargo Tracker</p>
+                                <div className="grid grid-cols-3 gap-2">
+                                  <div>
+                                    <label className={`block text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-neutral-400' : 'text-slate-600'}`}>Carrier</label>
+                                    <select value={cargoCarrier} onChange={(e) => setCargoCarrier(e.target.value)} className={`${inputClasses} text-[11px]`}>
+                                      <option value="">None</option>
+                                      <option value="Selam Bus">Selam Bus</option>
+                                      <option value="Sky Bus">Sky Bus</option>
+                                      <option value="Libus">Libus</option>
+                                      <option value="Golden Bus">Golden Bus</option>
+                                      <option value="Habesha Bus">Habesha Bus</option>
+                                      <option value="Other">Other</option>
+                                    </select>
+                                  </div>
+                                  <div>
+                                    <label className={`block text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-neutral-400' : 'text-slate-600'}`}>Ticket #</label>
+                                    <input type="text" value={cargoTicket} onChange={(e) => setCargoTicket(e.target.value)} placeholder="e.g. 48192" className={`${inputClasses} text-[11px] font-mono`} />
+                                  </div>
+                                  <div>
+                                    <label className={`block text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-neutral-400' : 'text-slate-600'}`}>City</label>
+                                    <input type="text" value={cargoCity} onChange={(e) => setCargoCity(e.target.value)} placeholder="e.g. Hawassa" className={`${inputClasses} text-[11px]`} />
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        <p className="text-[10px] text-emerald-400 font-medium pt-1">✅ Sale + delivery details recorded in one step.</p>
                       </div>
                     )}
 

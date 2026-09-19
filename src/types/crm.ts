@@ -143,6 +143,10 @@ export interface ProductItem {
   stockQuantity: number;
 }
 
+export type DeliveryScope = 'pickup' | 'addis_ababa' | 'province';
+export type AddisDeliveryType = 'own_delivery' | 'outsourced';
+export type DeliveryFeePaidBy = 'customer' | 'ttm_free';
+
 export interface ProductSale {
   id: string;
   customerId: string;
@@ -155,6 +159,15 @@ export interface ProductSale {
   carrier?: string;
   ticketNumber?: string;
   destinationCity?: string;
+  fulfillment_type?: 'pickup' | 'delivery';
+  delivery_scope?: DeliveryScope;
+  addis_delivery_type?: AddisDeliveryType;
+  outsourced_provider?: string;
+  delivery_fee_paid_by?: DeliveryFeePaidBy;
+  vehicle_plate_number?: string;
+  driver_name?: string;
+  driver_phone?: string;
+  branch_name?: string;
 }
 
 export interface Label {
