@@ -52,6 +52,9 @@ export const IncomingCallWidget: React.FC<IncomingCallWidgetProps> = ({
   const [priceFeedback, setPriceFeedback] = useState<string>('accepted');
   const [saleQuantity, setSaleQuantity] = useState(1);
   const [saleAmount, setSaleAmount] = useState('');
+  const [cargoCarrier, setCargoCarrier] = useState('');
+  const [cargoTicket, setCargoTicket] = useState('');
+  const [cargoCity, setCargoCity] = useState('');
 
   // New customer fields if not found
   const [newName, setNewName] = useState('');
@@ -123,6 +126,9 @@ export const IncomingCallWidget: React.FC<IncomingCallWidgetProps> = ({
         saleAmount: Number(saleAmount) || 0,
         salesRepId: currentUser.id,
         status: 'confirmed',
+        carrier: cargoCarrier || undefined,
+        ticketNumber: cargoTicket || undefined,
+        destinationCity: cargoCity || undefined,
       });
     }
     setPhoneInput('');
@@ -131,6 +137,11 @@ export const IncomingCallWidget: React.FC<IncomingCallWidgetProps> = ({
     setUnlistedProductName('');
     setNextFollowUpDate('');
     setDateError('');
+    setSaleQuantity(1);
+    setSaleAmount('');
+    setCargoCarrier('');
+    setCargoTicket('');
+    setCargoCity('');
     onClose();
   };
 
@@ -193,6 +204,9 @@ export const IncomingCallWidget: React.FC<IncomingCallWidgetProps> = ({
         saleAmount: Number(saleAmount) || 0,
         salesRepId: currentUser.id,
         status: 'confirmed',
+        carrier: cargoCarrier || undefined,
+        ticketNumber: cargoTicket || undefined,
+        destinationCity: cargoCity || undefined,
       });
     }
     setPhoneInput('');
@@ -203,6 +217,11 @@ export const IncomingCallWidget: React.FC<IncomingCallWidgetProps> = ({
     setUnlistedProductName('');
     setNextFollowUpDate('');
     setDateError('');
+    setSaleQuantity(1);
+    setSaleAmount('');
+    setCargoCarrier('');
+    setCargoTicket('');
+    setCargoCity('');
     onClose();
   };
 
@@ -369,6 +388,31 @@ export const IncomingCallWidget: React.FC<IncomingCallWidgetProps> = ({
                           </div>
                         </div>
                         <p className="text-[10px] text-emerald-400 font-medium">✅ Sale will be recorded alongside this call log in one step.</p>
+                        <div className="pt-2 border-t border-emerald-500/20 space-y-2">
+                          <p className="text-[10px] font-bold uppercase text-emerald-500/70 tracking-wider">Bus Cargo Tracker (Optional)</p>
+                          <div className="grid grid-cols-3 gap-2">
+                            <div>
+                              <label className={`block text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-neutral-400' : 'text-slate-600'}`}>Carrier</label>
+                              <select value={cargoCarrier} onChange={(e) => setCargoCarrier(e.target.value)} className={`${inputClasses} text-[11px]`}>
+                                <option value="">None</option>
+                                <option value="Selam Bus">Selam Bus</option>
+                                <option value="Sky Bus">Sky Bus</option>
+                                <option value="Libus">Libus</option>
+                                <option value="Golden Bus">Golden Bus</option>
+                                <option value="Habesha Bus">Habesha Bus</option>
+                                <option value="Other">Other</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label className={`block text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-neutral-400' : 'text-slate-600'}`}>Ticket #</label>
+                              <input type="text" value={cargoTicket} onChange={(e) => setCargoTicket(e.target.value)} placeholder="e.g. 48192" className={`${inputClasses} text-[11px] font-mono`} />
+                            </div>
+                            <div>
+                              <label className={`block text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-neutral-400' : 'text-slate-600'}`}>City</label>
+                              <input type="text" value={cargoCity} onChange={(e) => setCargoCity(e.target.value)} placeholder="e.g. Hawassa" className={`${inputClasses} text-[11px]`} />
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     )}
 
@@ -575,6 +619,31 @@ export const IncomingCallWidget: React.FC<IncomingCallWidgetProps> = ({
                           </div>
                         </div>
                         <p className="text-[10px] text-emerald-400 font-medium">✅ Sale will be recorded alongside this call log in one step.</p>
+                        <div className="pt-2 border-t border-emerald-500/20 space-y-2">
+                          <p className="text-[10px] font-bold uppercase text-emerald-500/70 tracking-wider">Bus Cargo Tracker (Optional)</p>
+                          <div className="grid grid-cols-3 gap-2">
+                            <div>
+                              <label className={`block text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-neutral-400' : 'text-slate-600'}`}>Carrier</label>
+                              <select value={cargoCarrier} onChange={(e) => setCargoCarrier(e.target.value)} className={`${inputClasses} text-[11px]`}>
+                                <option value="">None</option>
+                                <option value="Selam Bus">Selam Bus</option>
+                                <option value="Sky Bus">Sky Bus</option>
+                                <option value="Libus">Libus</option>
+                                <option value="Golden Bus">Golden Bus</option>
+                                <option value="Habesha Bus">Habesha Bus</option>
+                                <option value="Other">Other</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label className={`block text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-neutral-400' : 'text-slate-600'}`}>Ticket #</label>
+                              <input type="text" value={cargoTicket} onChange={(e) => setCargoTicket(e.target.value)} placeholder="e.g. 48192" className={`${inputClasses} text-[11px] font-mono`} />
+                            </div>
+                            <div>
+                              <label className={`block text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-neutral-400' : 'text-slate-600'}`}>City</label>
+                              <input type="text" value={cargoCity} onChange={(e) => setCargoCity(e.target.value)} placeholder="e.g. Hawassa" className={`${inputClasses} text-[11px]`} />
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     )}
 

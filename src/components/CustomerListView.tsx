@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Customer, Branch, User, CallLog, ProductItem, ProductSale, FilterPreset } from '../types/crm';
-import { Search, Filter, PhoneCall, ChevronRight, Trash2, Edit3, Mail, Users, UserCircle, Phone, Clock, ArrowUpRight, Bookmark, X } from 'lucide-react';
+import { Search, Filter, PhoneCall, ChevronRight, Trash2, Edit3, Mail, Users, UserCircle, Phone, Clock, ArrowUpRight, Bookmark, X, FileText } from 'lucide-react';
+import { generateProformaInvoice } from '../utils/proformaInvoice';
 
 const normalizePriority = (priority: string) => priority === 'Hot' || priority === 'Warm' ? priority : 'Normal';
 
@@ -548,6 +549,13 @@ export const CustomerListView: React.FC<CustomerListViewProps> = ({
                         <span>Qty: {sale.quantity.toLocaleString()}</span>
                         <span className="font-semibold">{sale.saleAmount.toLocaleString()} ETB</span>
                       </div>
+                      {(sale.carrier || sale.ticketNumber || sale.destinationCity) && (
+                        <div className={`flex flex-wrap gap-2 text-[10px] ${isDark ? 'text-zinc-500' : 'text-slate-500'}`}>
+                          {sale.carrier && <span className="bg-blue-950/40 text-blue-400 px-1.5 py-0.5 rounded border border-blue-800/40">🚌 {sale.carrier}</span>}
+                          {sale.ticketNumber && <span className="bg-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded font-mono">#{sale.ticketNumber}</span>}
+                          {sale.destinationCity && <span className="bg-amber-950/40 text-amber-400 px-1.5 py-0.5 rounded border border-amber-800/40">📍 {sale.destinationCity}</span>}
+                        </div>
+                      )}
                     </div>
                   ))
                 )}
@@ -561,6 +569,20 @@ export const CustomerListView: React.FC<CustomerListViewProps> = ({
               </button>
               <button onClick={() => { setSelectedCustomer(null); onOpenLogCallForCustomer(selectedCustomer); }} className="flex-1 text-xs py-2 px-3 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-semibold flex items-center justify-center gap-1 transition-colors">
                 <PhoneCall className="w-3.5 h-3.5" /> Log new call
+              </button>
+              <button
+                onClick={() => {
+                  const custSales = sales.filter(s => s.customerId === selectedCustomer.id);
+                  if (custSales.length === 0) {
+                    alert('No sales recorded for this customer yet. Record a sale first to generate a proforma invoice.');
+                    return;
+                  }
+                  generateProformaInvoice({ customer: selectedCustomer, sales: custSales, products, branches, users });
+                }}
+                className={`text-xs py-2 px-3 border rounded-lg font-medium flex items-center justify-center gap-1 transition-colors ${isDark ? 'border-emerald-800 bg-emerald-950/40 text-emerald-400 hover:bg-emerald-900/40' : 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'}`}
+                title="Generate Proforma Invoice"
+              >
+                <FileText className="w-3.5 h-3.5" /> Invoice
               </button>
               <button onClick={() => { if (confirm(`Delete ${selectedCustomer.customerName}?`)) { onDeleteCustomer(selectedCustomer.id); setSelectedCustomer(null); } }} className={`border p-2 rounded-lg transition-colors ${isDark ? 'border-red-900/60 bg-red-950/30 text-red-400 hover:bg-red-900/40' : 'border-red-200 bg-red-50 text-red-600 hover:bg-red-100'}`} title="Delete client">
                 <Trash2 className="w-4 h-4" />

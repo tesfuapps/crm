@@ -152,6 +152,9 @@ export interface ProductSale {
   saleAmount: number;
   salesRepId?: string;
   status?: 'confirmed' | 'cancelled';
+  carrier?: string;
+  ticketNumber?: string;
+  destinationCity?: string;
 }
 
 export interface Label {
