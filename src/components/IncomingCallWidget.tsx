@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Customer, CallLog, User, ProductItem, Branch, ProductSale } from '../types/crm';
 import { PhoneCall, Search, UserPlus, CheckCircle, X, Package } from 'lucide-react';
 
@@ -63,6 +63,16 @@ export const IncomingCallWidget: React.FC<IncomingCallWidgetProps> = ({
   const [driverName, setDriverName] = useState('');
   const [driverPhone, setDriverPhone] = useState('');
   const [vehiclePlate, setVehiclePlate] = useState('');
+
+  // Auto-calculate sale amount from product price × quantity
+  useEffect(() => {
+    if (selectedProductId !== 'none' && selectedProductId !== 'unlisted') {
+      const product = products.find(p => p.id === selectedProductId);
+      if (product) {
+        setSaleAmount(String(product.itemPrice * saleQuantity));
+      }
+    }
+  }, [selectedProductId, saleQuantity, products]);
 
   // New customer fields if not found
   const [newName, setNewName] = useState('');
@@ -417,14 +427,14 @@ export const IncomingCallWidget: React.FC<IncomingCallWidgetProps> = ({
                           </div>
                           <div>
                             <label className={`block text-[11px] font-bold uppercase mb-1 ${isDark ? 'text-neutral-300' : 'text-slate-700'}`}>Sale Amount (ETB)</label>
-                            <input
-                              type="number"
-                              min="0"
-                              value={saleAmount}
-                              onChange={(e) => setSaleAmount(e.target.value)}
-                              placeholder="e.g. 45000"
-                              className={`${inputClasses} font-mono font-bold`}
-                            />
+                            {selectedProductId !== 'none' && selectedProductId !== 'unlisted' ? (
+                              <div className={`${inputClasses} font-mono font-bold flex items-center gap-2`}>
+                                <span>{Number(saleAmount || 0).toLocaleString()}</span>
+                                <span className="text-[10px] text-emerald-400 font-normal">auto</span>
+                              </div>
+                            ) : (
+                              <input type="number" min="0" value={saleAmount} onChange={(e) => setSaleAmount(e.target.value)} placeholder="e.g. 45000" className={`${inputClasses} font-mono font-bold`} />
+                            )}
                           </div>
                         </div>
 
@@ -728,14 +738,14 @@ export const IncomingCallWidget: React.FC<IncomingCallWidgetProps> = ({
                           </div>
                           <div>
                             <label className={`block text-[11px] font-bold uppercase mb-1 ${isDark ? 'text-neutral-300' : 'text-slate-700'}`}>Sale Amount (ETB)</label>
-                            <input
-                              type="number"
-                              min="0"
-                              value={saleAmount}
-                              onChange={(e) => setSaleAmount(e.target.value)}
-                              placeholder="e.g. 45000"
-                              className={`${inputClasses} font-mono font-bold`}
-                            />
+                            {selectedProductId !== 'none' && selectedProductId !== 'unlisted' ? (
+                              <div className={`${inputClasses} font-mono font-bold flex items-center gap-2`}>
+                                <span>{Number(saleAmount || 0).toLocaleString()}</span>
+                                <span className="text-[10px] text-emerald-400 font-normal">auto</span>
+                              </div>
+                            ) : (
+                              <input type="number" min="0" value={saleAmount} onChange={(e) => setSaleAmount(e.target.value)} placeholder="e.g. 45000" className={`${inputClasses} font-mono font-bold`} />
+                            )}
                           </div>
                         </div>
 

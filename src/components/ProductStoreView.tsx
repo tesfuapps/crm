@@ -367,13 +367,13 @@ export const ProductStoreView: React.FC<ProductStoreViewProps> = ({
                       <td className="py-3 px-4 font-bold text-emerald-400">{sale.saleAmount.toLocaleString()} ETB</td>
                       <td className="py-3 px-4 text-xs text-zinc-500">{sale.saleDate}</td>
                       <td className="py-3 px-4 text-xs">{fulfillment}</td>
-                      <td className="py-3 px-4 no-export">
-                        <div className="flex items-center gap-1">
-                          <button onClick={() => handlePrintInvoice(sale)} className="p-1.5 hover:bg-zinc-700 rounded-lg transition-colors" title="Print Invoice">
-                            <Printer className="w-3.5 h-3.5 text-zinc-500 hover:text-amber-400" />
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-2">
+                          <button onClick={() => handlePrintInvoice(sale)} className="px-2.5 py-1 bg-amber-600/20 hover:bg-amber-600/40 border border-amber-700/40 text-amber-400 rounded-lg text-[11px] font-semibold flex items-center gap-1 transition-colors cursor-pointer">
+                            <Printer className="w-3 h-3" /> Invoice
                           </button>
-                          <button onClick={() => handleCopyDelivery(sale)} className="p-1.5 hover:bg-zinc-700 rounded-lg transition-colors" title="Copy Delivery Info">
-                            {copiedSaleId === sale.id ? <span className="text-[10px] text-emerald-400 font-bold">Copied!</span> : <Copy className="w-3.5 h-3.5 text-zinc-500 hover:text-sky-400" />}
+                          <button onClick={() => handleCopyDelivery(sale)} className="px-2.5 py-1 bg-sky-600/20 hover:bg-sky-600/40 border border-sky-700/40 text-sky-400 rounded-lg text-[11px] font-semibold flex items-center gap-1 transition-colors cursor-pointer">
+                            {copiedSaleId === sale.id ? '✓ Copied' : <><Copy className="w-3 h-3" /> Delivery</>}
                           </button>
                         </div>
                       </td>
