@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { Customer, CallLog, ProductSale, Branch, ProductItem } from '../types/crm';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { BarChart3, TrendingUp, Building2, Download, Award, DollarSign, Brain, Sparkles, AlertTriangle, ChevronRight, FileImage, FileText, X, Users, Phone, Mail, Truck, Store } from 'lucide-react';
@@ -22,6 +22,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
   const [showAIInsights, setShowAIInsights] = useState(false);
   const [selectedSourceDetail, setSelectedSourceDetail] = useState<string | null>(null);
   const [slideOverSource, setSlideOverSource] = useState<string | null>(null);
+  const [selectedOutcomeTab, setSelectedOutcomeTab] = useState('Evaluation');
 
   const barChartRef = useRef<HTMLDivElement>(null);
   const pieChartRef = useRef<HTMLDivElement>(null);
@@ -138,6 +139,31 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
     `${overdueFollowups.length} customers overdue on follow-up — immediate action recommended`,
     `Conversion rate: ${conversionRate}% from Contact to Client stage`,
   ];
+
+  const productFrequencyData = useMemo(() => {
+    const outcomeMap: Record<string, Record<string, { count: number; category: string }>> = {};
+    callLogs.forEach((log: any) => {
+      const outcome = log.callStatus || 'Evaluation';
+      const product = log.productId ? products.find(p => p.id === log.productId) : null;
+      const prodName = product?.itemName || log.unlistedProductName || null;
+      if (!prodName) return;
+      const category = product?.itemCategory || 'General';
+      if (!outcomeMap[outcome]) outcomeMap[outcome] = {};
+      if (!outcomeMap[outcome][prodName]) outcomeMap[outcome][prodName] = { count: 0, category };
+      outcomeMap[outcome][prodName].count += 1;
+    });
+    return outcomeMap;
+  }, [callLogs, products]);
+
+  const outcomeTabs = ['Evaluation', 'Out of Stock', 'Sales', 'Service', 'Complaint', 'Pre-order', 'Out of List'];
+
+  const currentRankedProducts = useMemo(() => {
+    const items = productFrequencyData[selectedOutcomeTab] || {};
+    const list = Object.entries(items).map(([name, data]) => ({ name, category: data.category, count: data.count }));
+    list.sort((a, b) => b.count - a.count);
+    const total = list.reduce((sum, item) => sum + item.count, 0);
+    return list.map(item => ({ ...item, percentage: total > 0 ? Math.round((item.count / total) * 100) : 0 }));
+  }, [productFrequencyData, selectedOutcomeTab]);
 
   // Lead source summary with inquiry count, closed sales, revenue, conversion rate
   const leadSourceSummary = sourceData.map(s => {
@@ -425,6 +451,82 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                   </td>
                 </tr>
               ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Weekly Product Frequency Breakdown by Outcome */}
+      <div className={`rounded-2xl border ${cardBg} overflow-hidden`}>
+        <div className="p-6 border-b border-zinc-800/60">
+          <h3 className={`font-bold flex items-center gap-2 ${cardText}`}>
+            <BarChart3 className="w-4 h-4 text-amber-400" />
+            <span>Weekly Product Demand & Frequency by Outcome</span>
+          </h3>
+          <p className={`text-xs mt-1 ${subText}`}>Itemized frequency breakdown across customer phone calls and showroom visits</p>
+        </div>
+
+        <div className="px-6 pt-4 pb-2">
+          <div className="flex flex-wrap gap-2">
+            {outcomeTabs.map((outcome) => {
+              const count = Object.values(productFrequencyData[outcome] || {}).reduce((a, b) => a + b.count, 0);
+              return (
+                <button
+                  key={outcome}
+                  onClick={() => setSelectedOutcomeTab(outcome)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                    selectedOutcomeTab === outcome
+                      ? 'bg-amber-500 text-black shadow-sm'
+                      : 'bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-zinc-200'
+                  }`}
+                >
+                  {outcome} ({count})
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="px-6 pb-6 pt-2 overflow-x-auto">
+          <table className="w-full text-xs text-left text-zinc-300">
+            <thead className="bg-zinc-900 border-b border-zinc-800 text-[10px] uppercase font-bold text-zinc-400">
+              <tr>
+                <th className="px-4 py-2.5 w-12 text-center">#</th>
+                <th className="px-4 py-2.5">Product Name</th>
+                <th className="px-4 py-2.5">Category</th>
+                <th className="px-4 py-2.5 text-center">Inquiries</th>
+                <th className="px-4 py-2.5 text-center">Share %</th>
+                <th className="px-4 py-2.5 w-48">Volume</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-800/50">
+              {currentRankedProducts.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="text-center py-6 text-zinc-500 italic">
+                    No product calls logged under {selectedOutcomeTab} this period.
+                  </td>
+                </tr>
+              ) : (
+                currentRankedProducts.map((item, idx) => (
+                  <tr key={idx} className="hover:bg-zinc-800/20 transition-colors">
+                    <td className="px-4 py-2.5 text-center font-mono text-zinc-500">{idx + 1}</td>
+                    <td className="px-4 py-2.5 font-medium text-zinc-100">{item.name}</td>
+                    <td className="px-4 py-2.5 text-zinc-400">{item.category}</td>
+                    <td className="px-4 py-2.5 text-center font-mono font-bold text-amber-400">
+                      {item.count} {item.count === 1 ? 'call' : 'calls'}
+                    </td>
+                    <td className="px-4 py-2.5 text-center font-mono text-zinc-300">{item.percentage}%</td>
+                    <td className="px-4 py-2.5">
+                      <div className="w-full bg-zinc-800 rounded-full h-2 overflow-hidden">
+                        <div
+                          className="bg-amber-500 h-full rounded-full transition-all"
+                          style={{ width: `${Math.max(item.percentage, 5)}%` }}
+                        />
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
