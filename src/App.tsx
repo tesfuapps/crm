@@ -29,7 +29,7 @@ import { CommandPalette } from './components/CommandPalette';
 import { AiCopilotDrawer } from './components/AiCopilotDrawer';
 import { SystemHelpModal } from './components/SystemHelpModal';
 import { callAutomation, afterSalesReminder, requiresFollowUp } from './services/followUpService';
-import { getCustomers, getCommunications, getProducts, getNotifications, logCommunication, recordSale } from './services/api';
+import { getCustomers, getCommunications, getProducts, getNotifications, getSales, logCommunication, recordSale, createCustomer, updateCustomer } from './services/api';
 import { useRealtimeSync } from './hooks/useRealtimeSync';
 
 const CURRENT_SCHEMA_VERSION = 4;
@@ -128,11 +128,12 @@ export function App() {
   useEffect(() => {
     async function loadSupabaseData() {
       try {
-        const [remoteCusts, remoteComms, remoteProds, remoteNotifs] = await Promise.all([
+        const [remoteCusts, remoteComms, remoteProds, remoteNotifs, remoteSales] = await Promise.all([
           getCustomers().catch(() => []),
           getCommunications().catch(() => []),
           getProducts().catch(() => []),
           getNotifications().catch(() => []),
+          getSales().catch(() => []),
         ]);
         if (remoteCusts.length > 0) {
           setCustomers(remoteCusts.map((c: any) => ({
@@ -190,6 +191,29 @@ export function App() {
             message: n.message,
             read: n.is_read,
             createdAt: n.created_at,
+          })));
+        }
+        if (remoteSales.length > 0) {
+          setSales(remoteSales.map((s: any) => ({
+            id: s.id,
+            customerId: s.customer_id,
+            itemId: s.product_id,
+            itemName: s.product_name,
+            quantity: s.quantity,
+            saleAmount: Number(s.sale_amount_etb) || 0,
+            saleDate: s.created_at,
+            salesRepId: s.sales_rep_id || currentUser.id,
+            branchId: s.branch_name === 'Piassa Branch' ? 'b3' : s.branch_name === 'Mexico Branch' ? 'b2' : 'b1',
+            status: 'confirmed',
+            fulfillmentType: s.fulfillment_type || 'pickup',
+            deliveryScope: s.delivery_scope || null,
+            addisDeliveryType: s.addis_delivery_type || null,
+            regionalCarrier: s.regional_carrier || null,
+            waybillTrackingNumber: s.waybill_tracking_number || null,
+            dispatchHub: s.dispatch_hub || null,
+            vehicleType: s.vehicle_type || null,
+            vehiclePlateNumber: s.vehicle_plate_number || null,
+            driverPhone: s.driver_phone || null,
           })));
         }
       } catch (err) {
@@ -252,6 +276,31 @@ export function App() {
           message: n.message,
           read: n.is_read,
           createdAt: n.created_at,
+        })));
+      }
+    } else if (table === 'purchases') {
+      const remoteSales = await getSales().catch(() => []);
+      if (remoteSales.length > 0) {
+        setSales(remoteSales.map((s: any) => ({
+          id: s.id,
+          customerId: s.customer_id,
+          itemId: s.product_id,
+          itemName: s.product_name,
+          quantity: s.quantity,
+          saleAmount: Number(s.sale_amount_etb) || 0,
+          saleDate: s.created_at,
+          salesRepId: s.sales_rep_id || currentUser.id,
+          branchId: s.branch_name === 'Piassa Branch' ? 'b3' : s.branch_name === 'Mexico Branch' ? 'b2' : 'b1',
+          status: 'confirmed',
+          fulfillmentType: s.fulfillment_type || 'pickup',
+          deliveryScope: s.delivery_scope || null,
+          addisDeliveryType: s.addis_delivery_type || null,
+          regionalCarrier: s.regional_carrier || null,
+          waybillTrackingNumber: s.waybill_tracking_number || null,
+          dispatchHub: s.dispatch_hub || null,
+          vehicleType: s.vehicle_type || null,
+          vehiclePlateNumber: s.vehicle_plate_number || null,
+          driverPhone: s.driver_phone || null,
         })));
       }
     }
@@ -462,8 +511,7 @@ export function App() {
     addToast(`New sale recorded: ${newSale.saleAmount.toLocaleString()} ETB`, 'success');
 
     try {
-      recordSale({
-        customer_id: newSale.customerId,
+      const salePayload = {
         product_id: newSale.itemId,
         product_name: product?.itemName || 'Equipment',
         branch_name: customer?.branchId === 'b3' ? 'Piassa Branch' : customer?.branchId === 'b2' ? 'Mexico Branch' : 'Bole Branch',
@@ -471,7 +519,35 @@ export function App() {
         sales_rep_name: currentUser.name,
         quantity: newSale.quantity,
         sale_amount_etb: newSale.saleAmount,
-      }).catch(err => console.warn('Supabase recordSale offline fallback:', err));
+        fulfillment_type: newSale.fulfillment_type || 'pickup',
+        delivery_scope: newSale.delivery_scope || null,
+        addis_delivery_type: newSale.addis_delivery_type || null,
+        regional_carrier: newSale.regional_carrier || null,
+        waybill_tracking_number: newSale.waybill_tracking_number || null,
+        dispatch_hub: newSale.dispatch_hub || null,
+        vehicle_type: newSale.vehicle_type || null,
+        vehicle_plate_number: newSale.vehicle_plate_number || null,
+        driver_phone: newSale.driver_phone || null,
+      };
+
+      if (customer) {
+        recordSale({ customer_id: customer.id, ...salePayload })
+          .catch(err => console.warn('Supabase recordSale offline fallback:', err));
+      } else {
+        createCustomer({
+          name: updatedCust?.customerName || 'Unknown',
+          phone_number: updatedCust?.phoneNumber || '',
+          main_branch: updatedCust?.mainBranchId || 'Bole Branch',
+        }).then(created => {
+          if (created?.id) {
+            setCustomers(prev => prev.map(c =>
+              c.id === newSale.customerId ? { ...c, id: created.id } : c
+            ));
+            recordSale({ customer_id: created.id, ...salePayload })
+              .catch(err => console.warn('Supabase recordSale offline fallback:', err));
+          }
+        }).catch(err => console.warn('Supabase createCustomer for sale offline fallback:', err));
+      }
     } catch {}
   }, [customers, sales, products, checkAndTriggerReassignment, currentUser.id, addToast]);
 
@@ -487,19 +563,6 @@ export function App() {
     setReminders(prev => [...prev, ...automation.reminders.filter(item => !prev.some(existing => existing.id === item.id))]);
     setNotifications(prev => [...automation.notifications, ...prev]);
     updatedCustomer = { ...updatedCustomer, lastContactedDate: newLog.dateTime };
-    if (newCustomer) {
-      setCustomers(prev => [newCustomer, ...prev]);
-      const notif: Notification = {
-        id: 'n_' + Date.now(),
-        recipientUserId: currentUser.id,
-        type: 'system',
-        title: '👤 New Customer Registered',
-        message: `${newCustomer.customerName} registered successfully.`,
-        read: false,
-        createdAt: new Date().toISOString(),
-      };
-      setNotifications(prev => [notif, ...prev]);
-    }
     setCallLogs(prev => [newLog, ...prev]);
     if (updatedCustomer && Object.keys(updatedCustomer).length > 0) {
       setCustomers(prev => prev.map(c => {
@@ -520,24 +583,47 @@ export function App() {
     setNotifications(prev => [notifLog, ...prev]);
     addToast(`Call Logged — ${cust?.customerName || 'Client'}: ${newLog.callStatus || newLog.purpose} (${newLog.durationMinutes}m)`, 'success');
 
-    try {
-      logCommunication({
-        customer_id: newLog.customerId,
-        sales_rep_id: currentUser.id,
-        sales_rep_name: currentUser.name,
-        branch_name: currentUser.branchId === 'b3' ? 'Piassa Branch' : currentUser.branchId === 'b2' ? 'Mexico Branch' : 'Bole Branch',
-        call_status: newLog.callStatus || 'Sales',
-        purpose: newLog.purpose,
-        duration_seconds: (newLog.durationMinutes || 5) * 60,
-        customer_type: newCustomer ? 'New' : 'Old',
-        lead_source: newCustomer?.source || 'Telegram',
-        product_id: newLog.productId !== 'unlisted' ? newLog.productId : null,
-        unlisted_product_name: newLog.unlistedProductName,
-        is_unlisted_product: newLog.isUnlistedProduct || false,
-        price_feedback: newLog.priceFeedback || 'not_discussed',
-        remarks: newLog.remark,
-      }).catch(err => console.warn('Supabase logCommunication offline fallback:', err));
-    } catch {}
+    const commPayload = {
+      customer_id: newLog.customerId,
+      sales_rep_id: currentUser.id,
+      sales_rep_name: currentUser.name,
+      branch_name: currentUser.branchId === 'b3' ? 'Piassa Branch' : currentUser.branchId === 'b2' ? 'Mexico Branch' : 'Bole Branch',
+      call_status: newLog.callStatus || 'Sales',
+      purpose: newLog.purpose,
+      duration_seconds: (newLog.durationMinutes || 5) * 60,
+      customer_type: newCustomer ? 'New' : 'Old',
+      lead_source: newCustomer?.source || 'Telegram',
+      product_id: newLog.productId !== 'unlisted' ? newLog.productId : null,
+      unlisted_product_name: newLog.unlistedProductName,
+      is_unlisted_product: newLog.isUnlistedProduct || false,
+      price_feedback: newLog.priceFeedback || 'not_discussed',
+      remarks: newLog.remark,
+    };
+
+    if (newCustomer) {
+      createCustomer({
+        name: newCustomer.customerName,
+        company_name: newCustomer.companyName || null,
+        phone_number: newCustomer.phoneNumber,
+        main_branch: newCustomer.mainBranchId || 'Bole Branch',
+        priority: newCustomer.leadPriority || 'Normal',
+        tin_number: newCustomer.tinNumber || null,
+        sub_city: newCustomer.subCity || null,
+        business_type: newCustomer.businessType || 'Commercial Print Shop',
+      }).then(created => {
+        if (created?.id) {
+          setCustomers(prev => prev.map(c =>
+            c.id === newCustomer.id ? { ...c, id: created.id } : c
+          ));
+          logCommunication({ ...commPayload, customer_id: created.id })
+            .catch(err => console.warn('Supabase logCommunication offline fallback:', err));
+        }
+      }).catch(err => console.warn('Supabase createCustomer offline fallback:', err));
+    } else {
+      try {
+        logCommunication(commPayload).catch(err => console.warn('Supabase logCommunication offline fallback:', err));
+      } catch {}
+    }
   };
 
   const handleAddCustomer = (newCust: Customer) => {
@@ -553,6 +639,25 @@ export function App() {
     };
     setNotifications(prev => [notif, ...prev]);
     addToast(`Added client ${newCust.customerName}`, 'success');
+
+    try {
+      createCustomer({
+        name: newCust.customerName,
+        company_name: newCust.companyName || null,
+        phone_number: newCust.phoneNumber,
+        main_branch: newCust.mainBranchId || 'Bole Branch',
+        priority: newCust.leadPriority || 'Normal',
+        tin_number: newCust.tinNumber || null,
+        sub_city: newCust.subCity || null,
+        business_type: newCust.businessType || 'Commercial Print Shop',
+      }).then(created => {
+        if (created?.id) {
+          setCustomers(prev => prev.map(c =>
+            c.id === newCust.id ? { ...c, id: created.id } : c
+          ));
+        }
+      }).catch(err => console.warn('Supabase createCustomer offline fallback:', err));
+    } catch {}
   };
 
   const handleUpdateCustomer = (updatedCust: Customer) => {
@@ -567,6 +672,19 @@ export function App() {
       createdAt: new Date().toISOString(),
     };
     setNotifications(prev => [notif, ...prev]);
+
+    try {
+      updateCustomer(updatedCust.id, {
+        name: updatedCust.customerName,
+        company_name: updatedCust.companyName || null,
+        phone_number: updatedCust.phoneNumber,
+        main_branch: updatedCust.mainBranchId || 'Bole Branch',
+        priority: updatedCust.leadPriority || 'Normal',
+        tin_number: updatedCust.tinNumber || null,
+        sub_city: updatedCust.subCity || null,
+        business_type: updatedCust.businessType || 'Commercial Print Shop',
+      }).catch(err => console.warn('Supabase updateCustomer offline fallback:', err));
+    } catch {}
   };
 
   const handleUpdateReminder = (updated: FollowUpReminder) => {

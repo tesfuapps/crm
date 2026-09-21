@@ -62,6 +62,19 @@ export async function logCommunication(callPayload: any) {
 }
 
 // ================= PURCHASES (SALES) =================
+export async function getSales(limit = 200) {
+  const { data, error } = await supabase
+    .from('purchases')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) {
+    console.error('getSales error:', error);
+    throw error;
+  }
+  return data || [];
+}
+
 export async function recordSale(purchasePayload: any) {
   const { data, error } = await supabase
     .from('purchases')
