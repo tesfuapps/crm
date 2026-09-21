@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Sparkles, X, Send, Bot, User as UserIcon, RefreshCw, AlertTriangle, Package, Calendar, FileText, Copy, Check } from 'lucide-react';
 import { Customer, CallLog, ProductItem, Branch, User } from '../types/crm';
-import { askAISalesAdvisor, getGeminiApiKey } from '../services/aiService';
+import { askAbe, getGeminiApiKey } from '../services/aiService';
 
 interface AiCopilotDrawerProps {
   isOpen: boolean;
@@ -114,7 +114,19 @@ export const AiCopilotDrawer: React.FC<AiCopilotDrawerProps> = ({
           `Hello! Following up from TTM CRM regarding your inquiry on the 5-in-1 Combo Heat Press. Confirm your order today to enjoy a 5% special showroom discount!"`;
         chips = ["📊 Today's Rollup", "🚨 Review Open Complaints"];
       } else {
-        responseText = await askAISalesAdvisor(q, customers);
+        // Build CRM context for Abe
+        const hotLeads = customers.filter(c => c.leadPriority === 'Hot').slice(0, 5);
+        const recentSales = callLogs.filter(c => c.callStatus === 'Sales').slice(-3);
+        const complaints = callLogs.filter(c => c.callStatus === 'Complaint');
+        const crmContext = [
+          `Total customers: ${customers.length}`,
+          `Hot leads: ${hotLeads.map(c => `${c.customerName} (${c.companyName || 'N/A'})`).join(', ') || 'None'}`,
+          `Recent sales calls: ${recentSales.length}`,
+          `Open complaints: ${complaints.length}`,
+          `Products in catalog: ${products.length}`,
+          `Branches: ${branches.map(b => b.name).join(', ')}`,
+        ].join('\n');
+        responseText = await askAbe(q, crmContext);
         chips = ["📊 Today's Rollup", "✍️ Draft Follow-Up"];
       }
 
@@ -150,7 +162,7 @@ export const AiCopilotDrawer: React.FC<AiCopilotDrawerProps> = ({
             </div>
             <div>
               <h3 className="font-bold text-sm text-neutral-100">TTM Operational Copilot</h3>
-              <p className="text-[10px] text-neutral-400">Gemini 3.6 Flash • Interactive AI Actions</p>
+              <p className="text-[10px] text-neutral-400">Abe • Gemini Flash • TTM Copilot</p>
             </div>
           </div>
           <button
@@ -267,7 +279,7 @@ export const AiCopilotDrawer: React.FC<AiCopilotDrawerProps> = ({
               <div className="w-7 h-7 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center">
                 <RefreshCw className="w-3.5 h-3.5 animate-spin" />
               </div>
-              <span>Copilot is analyzing CRM database...</span>
+              <span>Abe is analyzing your query...</span>
             </div>
           )}
         </div>
