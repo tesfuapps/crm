@@ -5,6 +5,11 @@ const GEMINI_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models
 export function getGeminiApiKey(): string {
   const envKey = (import.meta as any).env?.VITE_GEMINI_API_KEY;
   const storedKey = localStorage.getItem('ttm_crm_gemini_api_key');
+  // Auto-save env key to localStorage so it persists across sessions
+  if (envKey && !storedKey) {
+    localStorage.setItem('ttm_crm_gemini_api_key', envKey);
+    return envKey;
+  }
   return storedKey || envKey || '';
 }
 
