@@ -4,6 +4,7 @@ import {
   INITIAL_CALL_LOGS, INITIAL_PRODUCTS, INITIAL_SALES,
   INITIAL_NOTIFICATIONS, INITIAL_LABELS, INITIAL_FILTER_PRESETS,
 } from './data/mockData';
+import { OFFICIAL_TTM_CATALOG } from './data/officialCatalog';
 import {
   Customer, CallLog, User, Branch, ProductItem, ProductSale,
   CustomerStage, Notification, Label, FilterPreset, BranchReassignmentEntry, FollowUpReminder,
@@ -78,7 +79,26 @@ export function App() {
   });
   const [products, setProducts] = useState<ProductItem[]>(() => {
     const saved = localStorage.getItem('ttm_crm_products');
-    return saved ? JSON.parse(saved) : INITIAL_PRODUCTS;
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        const hasOldSaaS = parsed.some((p: any) =>
+          p.itemName?.includes('Abyssinia Cloud ERP') ||
+          p.itemName?.includes('EthioPOS') ||
+          p.itemName?.includes('Habesha Biometric') ||
+          p.itemCategory === 'Software' ||
+          p.itemCategory === 'Services' ||
+          p.itemCategory === 'SaaS'
+        );
+        if (hasOldSaaS || parsed.length < 10) {
+          localStorage.setItem('ttm_crm_products', JSON.stringify(OFFICIAL_TTM_CATALOG));
+          return OFFICIAL_TTM_CATALOG;
+        }
+        return parsed;
+      } catch { /* fall through */ }
+    }
+    localStorage.setItem('ttm_crm_products', JSON.stringify(INITIAL_PRODUCTS));
+    return INITIAL_PRODUCTS;
   });
   const [sales, setSales] = useState<ProductSale[]>(() => {
     const saved = localStorage.getItem('ttm_crm_sales');
