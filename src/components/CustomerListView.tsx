@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Customer, Branch, User, CallLog, ProductItem, ProductSale, FilterPreset } from '../types/crm';
 import { Search, Filter, PhoneCall, ChevronRight, Trash2, Edit3, Mail, Users, UserCircle, Phone, Clock, ArrowUpRight, Bookmark, X, FileText } from 'lucide-react';
 import { generateProformaInvoice } from '../utils/proformaInvoice';
+import { getCustomerCommunications, getCustomerSales } from '../services/api';
 
 const normalizePriority = (priority: string) => priority === 'Hot' || priority === 'Warm' ? priority : 'Normal';
 
@@ -52,6 +53,9 @@ export const CustomerListView: React.FC<CustomerListViewProps> = ({
   const [editFollowUp, setEditFollowUp] = useState('');
   const [editNotes, setEditNotes] = useState('');
   const [showPresets, setShowPresets] = useState(false);
+  const [drawerCallLogs, setDrawerCallLogs] = useState<CallLog[]>([]);
+  const [drawerSales, setDrawerSales] = useState<ProductSale[]>([]);
+  const [drawerLoading, setDrawerLoading] = useState(false);
   const drawerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -61,6 +65,54 @@ export const CustomerListView: React.FC<CustomerListViewProps> = ({
       setSelectedCustomer(null);
     }
   }, [initialSelectedCustomer]);
+
+  useEffect(() => {
+    if (!selectedCustomer?.id) {
+      setDrawerCallLogs([]);
+      setDrawerSales([]);
+      return;
+    }
+    setDrawerLoading(true);
+    Promise.all([
+      getCustomerCommunications(selectedCustomer.id).catch(() => []),
+      getCustomerSales(selectedCustomer.id).catch(() => []),
+    ]).then(([comms, custSales]) => {
+      setDrawerCallLogs(comms.map((cl: any) => ({
+        id: cl.id,
+        customerId: cl.customer_id,
+        userId: cl.sales_rep_id || 'u1',
+        dateTime: cl.call_date,
+        durationMinutes: Math.round((cl.duration_seconds || 60) / 60),
+        purpose: cl.purpose || cl.call_status,
+        remark: cl.remarks || '',
+        callStatus: cl.call_status,
+        productId: cl.product_id,
+        unlistedProductName: cl.unlisted_product_name,
+        isUnlistedProduct: cl.is_unlisted_product,
+        priceFeedback: cl.price_feedback,
+      })));
+      setDrawerSales(custSales.map((s: any) => ({
+        id: s.id,
+        customerId: s.customer_id,
+        itemId: s.product_id,
+        itemName: s.product_name,
+        quantity: s.quantity,
+        saleAmount: Number(s.sale_amount_etb) || 0,
+        saleDate: s.created_at,
+        salesRepId: s.sales_rep_id || 'u1',
+        branchId: s.branch_name === 'Piassa Branch' ? 'b3' : s.branch_name === 'Mexico Branch' ? 'b2' : 'b1',
+        status: 'confirmed',
+        fulfillmentType: s.fulfillment_type || 'pickup',
+        deliveryScope: s.delivery_scope || null,
+        regionalCarrier: s.regional_carrier || null,
+        waybillTrackingNumber: s.waybill_tracking_number || null,
+        dispatchHub: s.dispatch_hub || null,
+        vehicleType: s.vehicle_type || null,
+        vehiclePlateNumber: s.vehicle_plate_number || null,
+        driverPhone: s.driver_phone || null,
+      })));
+    }).finally(() => setDrawerLoading(false));
+  }, [selectedCustomer?.id]);
 
   useEffect(() => {
     if (!selectedCustomer?.id) return;
@@ -503,11 +555,14 @@ export const CustomerListView: React.FC<CustomerListViewProps> = ({
 
             {activeDetailTab === 'calls' && (
               <div className="p-4">
+                {drawerLoading ? (
+                  <p className="text-xs text-zinc-500 italic py-6 text-center">Loading call history...</p>
+                ) : (
                 <div className="flex flex-col gap-3">
-                  {callLogs.filter(cl => cl.customerId === selectedCustomer.id).length === 0 ? (
+                  {drawerCallLogs.length === 0 ? (
                     <p className="text-xs text-zinc-500 italic py-6 text-center">No past calls logged yet.</p>
                   ) : (
-                    callLogs.filter(cl => cl.customerId === selectedCustomer.id).map((log, logIndex) => (
+                    drawerCallLogs.map((log, logIndex) => (
                       <div key={log.id} className={`border-b pb-3 ${isDark ? 'border-zinc-800/60' : 'border-slate-200'}`}>
                         <div className="flex items-center justify-between gap-2 text-xs">
                           <div className="flex items-center gap-2">
@@ -524,6 +579,7 @@ export const CustomerListView: React.FC<CustomerListViewProps> = ({
                     ))
                   )}
                 </div>
+                )}
               </div>
             )}
 
@@ -537,10 +593,12 @@ export const CustomerListView: React.FC<CustomerListViewProps> = ({
             {activeDetailTab === 'purchaseHistory' && (
               <div className="p-4 space-y-3">
                 <p className={`text-xs ${isDark ? 'text-zinc-400' : 'text-slate-500'}`}>Lifetime spent includes confirmed purchases only. Cancelled purchases are excluded.</p>
-                {customerSales.length === 0 ? (
+                {drawerLoading ? (
+                  <p className="text-xs text-zinc-500 italic py-6 text-center">Loading purchase history...</p>
+                ) : drawerSales.length === 0 ? (
                   <p className="text-xs text-zinc-500 italic py-6 text-center">No purchases recorded yet.</p>
                 ) : (
-                  customerSales.map(sale => (
+                  drawerSales.map(sale => (
                     <div key={sale.id} className={`rounded-lg border p-3 space-y-2 ${isDark ? 'border-zinc-800 bg-zinc-950/40' : 'border-slate-200 bg-slate-50'}`}>
                       <div className="flex items-start justify-between gap-2 text-xs">
                         <span className="font-semibold">{products.find(product => product.id === sale.itemId)?.itemName || `Unavailable product (${sale.itemId})`}</span>

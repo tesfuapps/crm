@@ -61,6 +61,26 @@ export async function logCommunication(callPayload: any) {
   return data;
 }
 
+export async function getCustomerCommunications(customerId: string) {
+  const { data, error } = await supabase
+    .from('communications')
+    .select(`*, products (id, name, code, category, base_price_etb)`)
+    .eq('customer_id', customerId)
+    .order('call_date', { ascending: false });
+  if (error) throw error;
+  return data || [];
+}
+
+export async function getCustomerSales(customerId: string) {
+  const { data, error } = await supabase
+    .from('purchases')
+    .select('*')
+    .eq('customer_id', customerId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data || [];
+}
+
 // ================= PURCHASES (SALES) =================
 export async function getSales(limit = 200) {
   const { data, error } = await supabase
