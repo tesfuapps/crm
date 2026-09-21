@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { ProductItem, ProductSale, Customer, Branch, User } from '../types/crm';
-import { Package, Plus, DollarSign, Layers, ShoppingBag, Trash2, Download, Filter, Calendar, X } from 'lucide-react';
+import { Package, Plus, DollarSign, Layers, ShoppingBag, Trash2, Download, Filter, Calendar, X, Printer, Edit2, Copy } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { generateSaleInvoice } from '../utils/saleInvoice';
 
 interface ProductStoreViewProps {
   products: ProductItem[];
@@ -11,13 +12,14 @@ interface ProductStoreViewProps {
   users: User[];
   theme: 'light' | 'dark';
   onAddProduct: (item: ProductItem) => void;
+  onUpdateProduct: (item: ProductItem) => void;
   onDeleteProduct: (itemId: string) => void;
   onRecordSale: (sale: ProductSale) => void;
 }
 
 export const ProductStoreView: React.FC<ProductStoreViewProps> = ({
   products, sales, customers, branches, users, theme,
-  onAddProduct, onDeleteProduct, onRecordSale,
+  onAddProduct, onUpdateProduct, onDeleteProduct, onRecordSale,
 }) => {
   const isDark = theme === 'dark';
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -35,6 +37,13 @@ export const ProductStoreView: React.FC<ProductStoreViewProps> = ({
   const [customRangeFrom, setCustomRangeFrom] = useState('');
   const [customRangeTo, setCustomRangeTo] = useState('');
   const [showCustomRange, setShowCustomRange] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<ProductItem | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editCategory, setEditCategory] = useState('');
+  const [editPrice, setEditPrice] = useState(0);
+  const [editStock, setEditStock] = useState(0);
+  const [copiedSaleId, setCopiedSaleId] = useState<string | null>(null);
 
   const now = new Date();
   const todayStr = now.toISOString().split('T')[0];
@@ -168,6 +177,61 @@ export const ProductStoreView: React.FC<ProductStoreViewProps> = ({
     XLSX.writeFile(wb, `TTM_Sales_${salesFilterPeriod.replace(/\s/g, '_')}_${todayStr}.xlsx`);
   };
 
+  const openEditProduct = (product: ProductItem) => {
+    setEditingProduct(product);
+    setEditName(product.itemName);
+    setEditDescription(product.itemDescription);
+    setEditCategory(product.itemCategory);
+    setEditPrice(product.itemPrice);
+    setEditStock(product.stockQuantity);
+  };
+
+  const handleSaveEdit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingProduct || !editName.trim()) return;
+    onUpdateProduct({
+      ...editingProduct,
+      itemName: editName,
+      itemDescription: editDescription,
+      itemCategory: editCategory,
+      itemPrice: Number(editPrice),
+      stockQuantity: Number(editStock),
+    });
+    setEditingProduct(null);
+  };
+
+  const handlePrintInvoice = (sale: ProductSale) => {
+    const cust = customers.find(c => c.id === sale.customerId);
+    const prod = products.find(p => p.id === sale.itemId);
+    const branch = cust ? branches.find(b => b.id === cust.branchId) : undefined;
+    const rep = sale.salesRepId ? users.find(u => u.id === sale.salesRepId) : undefined;
+    if (!cust) return;
+    generateSaleInvoice({ sale, customer: cust, product: prod, branch, salesRep: rep });
+  };
+
+  const handleCopyDelivery = (sale: ProductSale) => {
+    const cust = customers.find(c => c.id === sale.customerId);
+    const prod = products.find(p => p.id === sale.itemId);
+    if (!cust) return;
+    const itemName = prod ? prod.itemName : 'Item';
+    let msg = '';
+    if (sale.fulfillment_type === 'pickup') {
+      msg = `📦 TTM Pickup\n\nCustomer: ${cust.customerName}${cust.companyName ? ' (' + cust.companyName + ')' : ''}\nItem: ${itemName} × ${sale.quantity}\n\nPickup at TTM Showroom. Please bring ID.`;
+    } else if (sale.delivery_scope === 'province') {
+      msg = `🚌 TTM Bus Cargo\n\nCustomer: ${cust.customerName}${cust.companyName ? ' (' + cust.companyName + ')' : ''}\nItem: ${itemName} × ${sale.quantity}\nCarrier: ${sale.carrier || 'N/A'}\nTicket: ${sale.ticketNumber || 'N/A'}\nDestination: ${sale.destinationCity || 'N/A'}`;
+    } else if (sale.addis_delivery_type === 'own_delivery') {
+      msg = `🚚 TTM Delivery\n\nCustomer: ${cust.customerName}${cust.companyName ? ' (' + cust.companyName + ')' : ''}\nItem: ${itemName} × ${sale.quantity}\nDriver: ${sale.driver_name || 'N/A'}\nPhone: ${sale.driver_phone || 'N/A'}\nVehicle: ${sale.vehicle_plate_number || 'N/A'}`;
+    } else if (sale.addis_delivery_type === 'outsourced') {
+      msg = `🚗 TTM Outsourced Delivery\n\nCustomer: ${cust.customerName}${cust.companyName ? ' (' + cust.companyName + ')' : ''}\nItem: ${itemName} × ${sale.quantity}\nProvider: ${sale.outsourced_provider || 'N/A'}\nDriver: ${sale.driver_name || 'N/A'}\nPhone: ${sale.driver_phone || 'N/A'}`;
+    }
+    if (msg) {
+      navigator.clipboard.writeText(msg).then(() => {
+        setCopiedSaleId(sale.id);
+        setTimeout(() => setCopiedSaleId(null), 2000);
+      });
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className={`p-6 rounded-xl border flex flex-col md:flex-row md:items-center justify-between gap-4 ${cardBg}`}>
@@ -198,7 +262,12 @@ export const ProductStoreView: React.FC<ProductStoreViewProps> = ({
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-semibold bg-amber-950/40 text-amber-300 px-2.5 py-0.5 rounded-full border border-amber-800/60">{product.itemCategory}</span>
-                  <span className="text-xs font-medium text-zinc-400">Stock: <strong className="text-zinc-200">{product.stockQuantity}</strong></span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-medium text-zinc-400">Stock: <strong className="text-zinc-200">{product.stockQuantity}</strong></span>
+                    <button onClick={() => openEditProduct(product)} className="p-1 hover:bg-zinc-700 rounded transition-colors" title="Edit Product">
+                      <Edit2 className="w-3.5 h-3.5 text-zinc-500 hover:text-amber-400" />
+                    </button>
+                  </div>
                 </div>
                 <h3 className="font-bold text-base text-white">{product.itemName}</h3>
                 <p className={`text-xs mt-1 line-clamp-2 ${subText}`}>{product.itemDescription}</p>
@@ -275,11 +344,12 @@ export const ProductStoreView: React.FC<ProductStoreViewProps> = ({
                 <th className="py-3 px-4">Sale Amount</th>
                 <th className="py-3 px-4">Date</th>
                 <th className="py-3 px-4">Fulfillment</th>
+                <th className="py-3 px-4 no-export">Actions</th>
               </tr>
             </thead>
             <tbody className={`divide-y ${isDark ? 'divide-zinc-800/60' : 'divide-slate-100'}`}>
               {filteredSales.length === 0 ? (
-                <tr><td colSpan={7} className="py-8 text-center text-zinc-500">No sales recorded for this period.</td></tr>
+                <tr><td colSpan={8} className="py-8 text-center text-zinc-500">No sales recorded for this period.</td></tr>
               ) : (
                 filteredSales.map((sale) => {
                   const cust = customers.find(c => c.id === sale.customerId);
@@ -297,6 +367,16 @@ export const ProductStoreView: React.FC<ProductStoreViewProps> = ({
                       <td className="py-3 px-4 font-bold text-emerald-400">{sale.saleAmount.toLocaleString()} ETB</td>
                       <td className="py-3 px-4 text-xs text-zinc-500">{sale.saleDate}</td>
                       <td className="py-3 px-4 text-xs">{fulfillment}</td>
+                      <td className="py-3 px-4 no-export">
+                        <div className="flex items-center gap-1">
+                          <button onClick={() => handlePrintInvoice(sale)} className="p-1.5 hover:bg-zinc-700 rounded-lg transition-colors" title="Print Invoice">
+                            <Printer className="w-3.5 h-3.5 text-zinc-500 hover:text-amber-400" />
+                          </button>
+                          <button onClick={() => handleCopyDelivery(sale)} className="p-1.5 hover:bg-zinc-700 rounded-lg transition-colors" title="Copy Delivery Info">
+                            {copiedSaleId === sale.id ? <span className="text-[10px] text-emerald-400 font-bold">Copied!</span> : <Copy className="w-3.5 h-3.5 text-zinc-500 hover:text-sky-400" />}
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   );
                 })
@@ -322,9 +402,11 @@ export const ProductStoreView: React.FC<ProductStoreViewProps> = ({
                 <label className="block text-xs font-semibold uppercase tracking-wider mb-1 text-zinc-400">Category</label>
                 <select value={itemCategory} onChange={(e) => setItemCategory(e.target.value)} className={`w-full ${inputBg} border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600`}>
                   <option value="Machines">Machines</option>
-                  <option value="Software">Software</option>
-                  <option value="Hardware">Hardware</option>
-                  <option value="Services">Services</option>
+                  <option value="Mugs">Mugs & Drinkware</option>
+                  <option value="Sublimation Blanks">Sublimation Blanks</option>
+                  <option value="Stamps">Stamps & Mounts</option>
+                  <option value="Papers">Papers & Films</option>
+                  <option value="Accessories">Accessories & Consumables</option>
                 </select>
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -377,6 +459,52 @@ export const ProductStoreView: React.FC<ProductStoreViewProps> = ({
               <div className="flex items-center justify-end gap-3 pt-4 border-t border-zinc-800/60">
                 <button type="button" onClick={() => setIsSaleModalOpen(false)} className={`px-4 py-2 border rounded-lg text-sm font-medium ${isDark ? 'border-zinc-700 text-zinc-300 hover:bg-zinc-800' : 'border-slate-200 text-slate-700 hover:bg-slate-100'}`}>Cancel</button>
                 <button type="submit" className={`px-5 py-2 ${primaryBtn} rounded-lg text-sm font-medium`}>Record Sale</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {editingProduct && (
+        <div className="fixed inset-0 bg-zinc-950/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className={`rounded-2xl shadow-xl max-w-md w-full overflow-hidden border ${modalBg}`}>
+            <div className={`flex items-center justify-between px-6 py-4 border-b ${modalHeader}`}>
+              <h3 className="font-bold text-white flex items-center gap-2"><Edit2 className="w-4 h-4 text-amber-400" /> Edit Product</h3>
+              <button onClick={() => setEditingProduct(null)} className="text-zinc-400 hover:text-zinc-200">×</button>
+            </div>
+            <form onSubmit={handleSaveEdit} className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider mb-1 text-zinc-400">Product Name *</label>
+                <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} className={`w-full ${inputBg} border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600`} required />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider mb-1 text-zinc-400">Description / Code</label>
+                <input type="text" value={editDescription} onChange={(e) => setEditDescription(e.target.value)} className={`w-full ${inputBg} border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600`} />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider mb-1 text-zinc-400">Category</label>
+                <select value={editCategory} onChange={(e) => setEditCategory(e.target.value)} className={`w-full ${inputBg} border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600`}>
+                  <option value="Machines">Machines</option>
+                  <option value="Mugs">Mugs & Drinkware</option>
+                  <option value="Sublimation Blanks">Sublimation Blanks</option>
+                  <option value="Stamps">Stamps & Mounts</option>
+                  <option value="Papers">Papers & Films</option>
+                  <option value="Accessories">Accessories & Consumables</option>
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider mb-1 text-zinc-400">Price (ETB)</label>
+                  <input type="number" value={editPrice} onChange={(e) => setEditPrice(Number(e.target.value))} className={`w-full ${inputBg} border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600`} required />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider mb-1 text-zinc-400">Stock Qty</label>
+                  <input type="number" value={editStock} onChange={(e) => setEditStock(Number(e.target.value))} className={`w-full ${inputBg} border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600`} required />
+                </div>
+              </div>
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-zinc-800/60">
+                <button type="button" onClick={() => setEditingProduct(null)} className={`px-4 py-2 border rounded-lg text-sm font-medium ${isDark ? 'border-zinc-700 text-zinc-300 hover:bg-zinc-800' : 'border-slate-200 text-slate-700 hover:bg-slate-100'}`}>Cancel</button>
+                <button type="submit" className={`px-5 py-2 ${primaryBtn} rounded-lg text-sm font-medium`}>Save Changes</button>
               </div>
             </form>
           </div>

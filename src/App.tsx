@@ -711,6 +711,7 @@ export function App() {
           {activeTab === 'products' && (
             <ProductStoreView products={products} sales={sales} customers={customers} branches={branches} users={users} theme={theme}
               onAddProduct={(item) => setProducts(prev => [item, ...prev])}
+              onUpdateProduct={(updated) => setProducts(prev => prev.map(p => p.id === updated.id ? updated : p))}
               onDeleteProduct={(id) => setProducts(prev => prev.filter(p => p.id !== id))}
               onRecordSale={handleRecordSale} />
           )}
