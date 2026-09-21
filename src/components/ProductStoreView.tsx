@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { ProductItem, ProductSale, Customer, Branch, User } from '../types/crm';
-import { Package, Plus, DollarSign, Layers, ShoppingBag, Trash2, Download, Filter, Calendar, X, Printer, Edit2, Copy } from 'lucide-react';
+import { Package, Plus, DollarSign, Layers, ShoppingBag, Trash2, Download, Filter, Calendar, X, Printer, Edit2, Copy, Search } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { generateSaleInvoice } from '../utils/saleInvoice';
 
@@ -44,6 +44,8 @@ export const ProductStoreView: React.FC<ProductStoreViewProps> = ({
   const [editPrice, setEditPrice] = useState(0);
   const [editStock, setEditStock] = useState(0);
   const [copiedSaleId, setCopiedSaleId] = useState<string | null>(null);
+  const [productCategoryFilter, setProductCategoryFilter] = useState('All');
+  const [productSearch, setProductSearch] = useState('');
 
   const now = new Date();
   const todayStr = now.toISOString().split('T')[0];
@@ -65,6 +67,20 @@ export const ProductStoreView: React.FC<ProductStoreViewProps> = ({
       return true;
     });
   }, [sales, salesFilterPeriod, customRangeFrom, customRangeTo]);
+
+  const productCategories = useMemo(() => {
+    const cats: Record<string, number> = { All: products.length };
+    products.forEach(p => { cats[p.itemCategory] = (cats[p.itemCategory] || 0) + 1; });
+    return cats;
+  }, [products]);
+
+  const filteredProducts = useMemo(() => {
+    return products.filter(p => {
+      const matchesCategory = productCategoryFilter === 'All' || p.itemCategory === productCategoryFilter;
+      const matchesSearch = !productSearch || p.itemName.toLowerCase().includes(productSearch.toLowerCase()) || p.itemDescription.toLowerCase().includes(productSearch.toLowerCase());
+      return matchesCategory && matchesSearch;
+    });
+  }, [products, productCategoryFilter, productSearch]);
 
   const cardBg = isDark ? 'bg-[#18181b] border-zinc-800/60' : 'bg-white border-slate-200';
   const cardText = isDark ? 'text-zinc-100' : 'text-slate-900';
@@ -253,32 +269,68 @@ export const ProductStoreView: React.FC<ProductStoreViewProps> = ({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {products.map((product) => {
-          const productSales = sales.filter(s => s.itemId === product.id);
-          const totalUnitsSold = productSales.reduce((sum, s) => sum + s.quantity, 0);
-          return (
-            <div key={product.id} className={`rounded-xl border p-5 flex flex-col justify-between ${cardBg}`}>
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-semibold bg-amber-950/40 text-amber-300 px-2.5 py-0.5 rounded-full border border-amber-800/60">{product.itemCategory}</span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-medium text-zinc-400">Stock: <strong className="text-zinc-200">{product.stockQuantity}</strong></span>
-                    <button onClick={() => openEditProduct(product)} className="p-1 hover:bg-zinc-700 rounded transition-colors" title="Edit Product">
-                      <Edit2 className="w-3.5 h-3.5 text-zinc-500 hover:text-amber-400" />
-                    </button>
+      {/* Category Filter Tabs + Search */}
+      <div className={`p-4 rounded-xl border ${cardBg}`}>
+        <div className="flex flex-wrap items-center gap-2 mb-3">
+          {Object.entries(productCategories).map(([cat, count]) => (
+            <button
+              key={cat}
+              onClick={() => setProductCategoryFilter(cat)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                productCategoryFilter === cat
+                  ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
+                  : 'bg-zinc-800/60 text-zinc-400 border border-zinc-700/40 hover:text-zinc-200'
+              }`}
+            >
+              {cat} <span className="ml-1 opacity-60">({count})</span>
+            </button>
+          ))}
+        </div>
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+          <input
+            type="text"
+            value={productSearch}
+            onChange={(e) => setProductSearch(e.target.value)}
+            placeholder="Search products by name or code..."
+            className={`w-full pl-9 pr-4 py-2 rounded-lg text-sm border ${inputBg} focus:outline-none focus:ring-2 focus:ring-amber-600`}
+          />
+        </div>
+      </div>
+
+      {/* Product Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {filteredProducts.length === 0 ? (
+          <div className={`col-span-full p-8 rounded-xl border text-center ${cardBg}`}>
+            <p className="text-zinc-500 text-sm">No products found in this category.</p>
+          </div>
+        ) : (
+          filteredProducts.map((product) => {
+            const productSales = sales.filter(s => s.itemId === product.id);
+            const totalUnitsSold = productSales.reduce((sum, s) => sum + s.quantity, 0);
+            return (
+              <div key={product.id} className={`rounded-xl border p-4 flex flex-col justify-between ${cardBg} hover:border-amber-800/40 transition-colors`}>
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] font-semibold bg-amber-950/40 text-amber-300 px-2 py-0.5 rounded-full border border-amber-800/60">{product.itemCategory}</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[11px] font-medium text-zinc-400">Stock: <strong className="text-zinc-200">{product.stockQuantity}</strong></span>
+                      <button onClick={() => openEditProduct(product)} className="p-1 hover:bg-zinc-700 rounded transition-colors" title="Edit">
+                        <Edit2 className="w-3 h-3 text-zinc-500 hover:text-amber-400" />
+                      </button>
+                    </div>
                   </div>
+                  <h3 className="font-bold text-sm text-white leading-tight">{product.itemName}</h3>
+                  <p className={`text-[11px] mt-1 line-clamp-1 ${subText}`}>{product.itemDescription}</p>
                 </div>
-                <h3 className="font-bold text-base text-white">{product.itemName}</h3>
-                <p className={`text-xs mt-1 line-clamp-2 ${subText}`}>{product.itemDescription}</p>
+                <div className={`mt-3 pt-3 border-t ${borderSub} flex items-center justify-between`}>
+                  <div><span className="text-[10px] text-zinc-500">Price</span><p className="text-base font-bold text-emerald-400">{product.itemPrice.toLocaleString()} ETB</p></div>
+                  <div className="text-right"><span className="text-[10px] text-zinc-500">Sold</span><p className="text-xs font-bold text-zinc-200">{totalUnitsSold} units</p></div>
+                </div>
               </div>
-              <div className={`mt-6 pt-4 border-t ${borderSub} flex items-center justify-between`}>
-                <div><span className="text-xs text-zinc-500">Price</span><p className="text-lg font-bold text-emerald-400">{product.itemPrice.toLocaleString()} ETB</p></div>
-                <div className="text-right"><span className="text-xs text-zinc-500">Total Sold</span><p className="text-sm font-bold text-zinc-200">{totalUnitsSold} units</p></div>
-              </div>
-            </div>
-          );
-        })}
+            );
+          })
+        )}
       </div>
 
       <div className={`rounded-xl border p-6 ${cardBg}`}>
