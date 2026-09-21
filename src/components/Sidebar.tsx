@@ -11,7 +11,8 @@ import {
   PhoneCall,
   ChevronsLeft,
   ChevronsRight,
-  Bell
+  Bell,
+  ShoppingCart
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -55,6 +56,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onCol
     { id: 'leaderboard', label: 'Team Scoreboard', icon: Trophy },
     { id: 'reports', label: 'Reports', icon: BarChart3 },
     { id: 'products', label: 'Product Store', icon: Package },
+    { id: 'sales', label: 'Sales', icon: ShoppingCart },
     { id: 'import-export', label: 'Import / Export', icon: ArrowLeftRight },
     { id: 'settings', label: 'Settings & Users', icon: Settings },
   ];

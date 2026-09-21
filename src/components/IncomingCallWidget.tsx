@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Customer, CallLog, User, ProductItem, Branch, ProductSale } from '../types/crm';
 import { PhoneCall, Search, UserPlus, CheckCircle, X, Package } from 'lucide-react';
+import { generateSaleId, generateDeliveryTicketId } from '../utils/ids';
 
 const REQUIRED_FOLLOWUP_OUTCOMES = ['Pre-order', 'Evaluation', 'Complaint'];
 
@@ -136,7 +137,8 @@ export const IncomingCallWidget: React.FC<IncomingCallWidgetProps> = ({
       const product = selectedProductId !== 'none' && selectedProductId !== 'unlisted'
         ? products.find(p => p.id === selectedProductId) : null;
       onRecordSale({
-        id: 'ps_' + Date.now(),
+        id: generateSaleId(),
+        deliveryTicketId: fulfillmentType === 'delivery' && deliveryScope === 'province' ? generateDeliveryTicketId() : undefined,
         customerId: matchedCustomer.id,
         itemId: selectedProductId !== 'none' && selectedProductId !== 'unlisted' ? selectedProductId : 'unlisted_' + Date.now(),
         quantity: saleQuantity,
@@ -230,7 +232,8 @@ export const IncomingCallWidget: React.FC<IncomingCallWidgetProps> = ({
 
     if (outcome === 'Sales' && onRecordSale) {
       onRecordSale({
-        id: 'ps_' + Date.now(),
+        id: generateSaleId(),
+        deliveryTicketId: fulfillmentType === 'delivery' && deliveryScope === 'province' ? generateDeliveryTicketId() : undefined,
         customerId: newCustId,
         itemId: selectedProductId !== 'none' && selectedProductId !== 'unlisted' ? selectedProductId : 'unlisted_' + Date.now(),
         quantity: saleQuantity,

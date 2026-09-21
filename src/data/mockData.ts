@@ -105,11 +105,11 @@ export const INITIAL_CALL_LOGS: CallLog[] = [
 ];
 
 export const INITIAL_SALES: ProductSale[] = [
-  { id: 's1', customerId: 'c1', itemId: 'mch-009', quantity: 1, saleDate: '2026-09-16', saleAmount: 28000 },
-  { id: 's2', customerId: 'c5', itemId: 'mug-001', quantity: 1, saleDate: '2026-09-16', saleAmount: 4200 },
-  { id: 's3', customerId: 'c6', itemId: 'mch-001', quantity: 1, saleDate: '2026-09-16', saleAmount: 25000 },
-  { id: 's4', customerId: 'c10', itemId: 'mch-003', quantity: 1, saleDate: '2026-09-15', saleAmount: 19500 },
-  { id: 's5', customerId: 'c15', itemId: 'stp-001', quantity: 10, saleDate: '2026-09-15', saleAmount: 3200 },
+  { id: 'TTM-SAL001X1', customerId: 'c1', itemId: 'mch-009', quantity: 1, saleDate: '2026-09-16', saleAmount: 28000 },
+  { id: 'TTM-SAL002X2', customerId: 'c5', itemId: 'mug-001', quantity: 1, saleDate: '2026-09-16', saleAmount: 4200 },
+  { id: 'TTM-SAL003X3', customerId: 'c6', itemId: 'mch-001', quantity: 1, saleDate: '2026-09-16', saleAmount: 25000 },
+  { id: 'TTM-SAL004X4', customerId: 'c10', itemId: 'mch-003', quantity: 1, saleDate: '2026-09-15', saleAmount: 19500 },
+  { id: 'TTM-SAL005X5', customerId: 'c15', itemId: 'stp-001', quantity: 10, saleDate: '2026-09-15', saleAmount: 3200 },
 ];
 
 export const INITIAL_NOTIFICATIONS: Notification[] = [

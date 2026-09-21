@@ -3,6 +3,7 @@ import { ProductItem, ProductSale, Customer, Branch, User } from '../types/crm';
 import { Package, Plus, DollarSign, Layers, ShoppingBag, Trash2, Download, Filter, Calendar, X, Printer, Edit2, Copy, Search } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { generateSaleInvoice } from '../utils/saleInvoice';
+import { generateSaleId } from '../utils/ids';
 
 interface ProductStoreViewProps {
   products: ProductItem[];
@@ -106,7 +107,7 @@ export const ProductStoreView: React.FC<ProductStoreViewProps> = ({
     e.preventDefault();
     const product = products.find(p => p.id === saleItemId);
     if (!product) return;
-    const newSale: ProductSale = { id: 's_' + Date.now(), customerId: saleCustomerId, itemId: saleItemId, quantity: Number(saleQuantity), saleDate: new Date().toISOString().split('T')[0], saleAmount: product.itemPrice * Number(saleQuantity) };
+    const newSale: ProductSale = { id: generateSaleId(), customerId: saleCustomerId, itemId: saleItemId, quantity: Number(saleQuantity), saleDate: new Date().toISOString().split('T')[0], saleAmount: product.itemPrice * Number(saleQuantity) };
     onRecordSale(newSale);
     setIsSaleModalOpen(false);
   };

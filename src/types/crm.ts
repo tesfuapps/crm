@@ -149,6 +149,7 @@ export type DeliveryFeePaidBy = 'customer' | 'ttm_free';
 
 export interface ProductSale {
   id: string;
+  deliveryTicketId?: string;
   customerId: string;
   itemId: string;
   quantity: number;

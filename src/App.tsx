@@ -16,6 +16,7 @@ import { CustomerListView } from './components/CustomerListView';
 import { PipelineBoard } from './components/PipelineBoard';
 import { ReportsView } from './components/ReportsView';
 import { ProductStoreView } from './components/ProductStoreView';
+import { SalesView } from './components/SalesView';
 import { ImportExportView } from './components/ImportExportView';
 import { SettingsView } from './components/SettingsView';
 import { IncomingCallWidget } from './components/IncomingCallWidget';
@@ -714,6 +715,10 @@ export function App() {
               onUpdateProduct={(updated) => setProducts(prev => prev.map(p => p.id === updated.id ? updated : p))}
               onDeleteProduct={(id) => setProducts(prev => prev.filter(p => p.id !== id))}
               onRecordSale={handleRecordSale} />
+          )}
+          {activeTab === 'sales' && (
+            <SalesView sales={sales} products={products} customers={customers} branches={branches} users={users} theme={theme}
+              setActiveTab={setActiveTab} onSelectCustomer={handleSelectCustomer} />
           )}
           {activeTab === 'import-export' && (
             <ImportExportView customers={customers} branches={branches} theme={theme}
