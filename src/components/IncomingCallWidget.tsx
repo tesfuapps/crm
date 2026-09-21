@@ -29,6 +29,7 @@ interface IncomingCallWidgetProps {
   onSelectCustomer: (customer: Customer) => void;
   products: ProductItem[];
   onRecordSale?: (sale: ProductSale) => void;
+  initialCustomer?: Customer | null;
 }
 
 export const IncomingCallWidget: React.FC<IncomingCallWidgetProps> = ({
@@ -41,6 +42,7 @@ export const IncomingCallWidget: React.FC<IncomingCallWidgetProps> = ({
   onSaveCallLog,
   products,
   onRecordSale,
+  initialCustomer,
 }) => {
   const [phoneInput, setPhoneInput] = useState('');
   const [remark, setRemark] = useState('');
@@ -84,6 +86,12 @@ export const IncomingCallWidget: React.FC<IncomingCallWidgetProps> = ({
   const [newName, setNewName] = useState('');
   const [newCompany, setNewCompany] = useState('');
   const [newSource, setNewSource] = useState('Telegram');
+
+  React.useEffect(() => {
+    if (isOpen && initialCustomer) {
+      setPhoneInput(initialCustomer.phoneNumber);
+    }
+  }, [isOpen, initialCustomer]);
 
   if (!isOpen) return null;
 

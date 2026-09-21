@@ -311,6 +311,7 @@ export function App() {
   const [isAiCopilotOpen, setIsAiCopilotOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [selectedCustomerForDetail, setSelectedCustomerForDetail] = useState<Customer | null>(null);
+  const [customerForCall, setCustomerForCall] = useState<Customer | null>(null);
   const [toasts, setToasts] = useState<{ id: string; message: string; type: string }[]>([]);
   const [showOnboarding, setShowOnboarding] = useState(!localStorage.getItem('ttm_crm_onboarded'));
 
@@ -807,7 +808,7 @@ export function App() {
             <CustomerListView customers={customers} branches={branches} users={users} callLogs={callLogs} sales={sales}
               selectedBranchId={selectedBranchId} products={products} theme={theme}
               onAddCustomer={handleAddCustomer} onUpdateCustomer={handleUpdateCustomer}
-              onDeleteCustomer={handleDeleteCustomer} onOpenLogCallForCustomer={() => setIsIncomingCallOpen(true)}
+              onDeleteCustomer={handleDeleteCustomer} onOpenLogCallForCustomer={(cust) => { setCustomerForCall(cust); setIsIncomingCallOpen(true); }}
               initialSelectedCustomer={selectedCustomerForDetail}
               filterPresets={filterPresets} />
           )}
@@ -861,10 +862,10 @@ export function App() {
         </main>
       </div>
 
-      <IncomingCallWidget isOpen={isIncomingCallOpen} onClose={() => setIsIncomingCallOpen(false)}
+      <IncomingCallWidget isOpen={isIncomingCallOpen} onClose={() => { setIsIncomingCallOpen(false); setCustomerForCall(null); }}
         customers={customers} branches={branches} currentUser={currentUser} theme={theme}
         onSaveCallLog={handleSaveCallLog} onSelectCustomer={handleSelectCustomer} products={products}
-        onRecordSale={handleRecordSale} />
+        onRecordSale={handleRecordSale} initialCustomer={customerForCall} />
 
       <CommandPalette
         isOpen={isCommandPaletteOpen} onClose={() => setIsCommandPaletteOpen(false)}
