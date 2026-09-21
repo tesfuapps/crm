@@ -45,6 +45,11 @@ async function callGemini(prompt: string, opts?: { json?: boolean; temperature?:
 
 // ─── ABE: TTM Showroom Copilot ───────────────────────────────────────────────
 
+export function cleanAbeText(rawText: string): string {
+  if (!rawText) return '';
+  return rawText.replace(/\*\*/g, '').trim();
+}
+
 const ABE_SYSTEM_PROMPT = `
 You are Abe, the expert Showroom AI Copilot for TTM CRM in Addis Ababa, Ethiopia.
 Your operations cover three showrooms: Bole Branch, Piassa Branch, and Mexico Branch.
@@ -56,6 +61,8 @@ Your expertise:
 4. Currency: All prices are in Ethiopian Birr (ETB).
 5. Languages: Fluent in natural, polite Ethiopian business English and Amharic (using Ge'ez script).
 6. Response Style: Concise, direct, helpful, and professional. Avoid generic corporate buzzwords.
+
+STRICT FORMATTING RULE: Never use markdown bold double asterisks (**) anywhere in your response. Do not write **Title:** or **Word**. Use plain text, clean spacing, and simple hyphens (-) for lists. Keep formatting clean and minimal.
 `;
 
 export async function askAbe(userQuery: string, crmContext?: string): Promise<string> {

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Sparkles, X, Send, Bot, User as UserIcon, RefreshCw, AlertTriangle, Package, Calendar, FileText, Copy, Check } from 'lucide-react';
 import { Customer, CallLog, ProductItem, Branch, User } from '../types/crm';
-import { askAbe, getGeminiApiKey } from '../services/aiService';
+import { askAbe, cleanAbeText, getGeminiApiKey } from '../services/aiService';
 
 interface AiCopilotDrawerProps {
   isOpen: boolean;
@@ -20,6 +20,8 @@ interface Message {
   time: string;
   actionChips?: string[];
   showCopy?: boolean;
+  cardType?: 'proforma' | 'followup' | null;
+  cardData?: Record<string, any>;
 }
 
 export const AiCopilotDrawer: React.FC<AiCopilotDrawerProps> = ({
@@ -127,15 +129,35 @@ export const AiCopilotDrawer: React.FC<AiCopilotDrawerProps> = ({
           `Branches: ${branches.map(b => b.name).join(', ')}`,
         ].join('\n');
         responseText = await askAbe(q, crmContext);
-        chips = ["📊 Today's Rollup", "✍️ Draft Follow-Up"];
+        // Dynamic chips based on query context
+        const lower = q.toLowerCase();
+        if (lower.includes('price') || lower.includes('cost') || lower.includes('quote') || lower.includes('proforma')) {
+          chips = ["📋 Create Proforma", "📊 Today's Rollup"];
+        } else if (lower.includes('follow-up') || lower.includes('telegram') || lower.includes('message')) {
+          chips = ["💬 Draft Amharic", "📞 View Phone Numbers"];
+        } else if (lower.includes('stock') || lower.includes('out of')) {
+          chips = ["📦 Check Alternatives", "📊 Today's Rollup"];
+        } else {
+          chips = ["📊 Today's Rollup", "✍️ Draft Follow-Up", "📦 Check Stock"];
+        }
+      }
+
+      // Detect interactive card type from response
+      let cardType: 'proforma' | 'followup' | null = null;
+      const lowerResponse = responseText.toLowerCase();
+      if (lowerResponse.includes('etb') && (lowerResponse.includes('price') || lowerResponse.includes('total') || lowerResponse.includes('quote') || lowerResponse.includes('proforma'))) {
+        cardType = 'proforma';
+      } else if (lowerResponse.includes('follow') || lowerResponse.includes('remind') || lowerResponse.includes('schedule')) {
+        cardType = 'followup';
       }
 
       const aiMsg: Message = {
         id: 'ai_' + Date.now(),
         sender: 'ai',
-        text: responseText,
+        text: cleanAbeText(responseText),
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         actionChips: chips,
+        cardType,
       };
       setMessages(prev => [...prev, aiMsg]);
     } catch (err) {
@@ -250,6 +272,63 @@ export const AiCopilotDrawer: React.FC<AiCopilotDrawerProps> = ({
                     </div>
                   )}
                 </div>
+
+                {/* Interactive Proforma Quote Card */}
+                {msg.sender === 'ai' && msg.cardType === 'proforma' && (
+                  <div className="p-3.5 bg-[#121212] border border-neutral-800 rounded-xl space-y-2.5">
+                    <div className="flex items-center justify-between border-b border-neutral-800 pb-2">
+                      <span className="text-[11px] font-semibold uppercase tracking-wider text-amber-400">Proforma Quote Draft</span>
+                      <span className="text-[10px] text-neutral-500 font-mono">TTM</span>
+                    </div>
+                    <p className="text-xs text-neutral-300 whitespace-pre-wrap leading-relaxed">{msg.text}</p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(`TTM Equipment - Proforma Quotation\n\n${msg.text}\n\nPayment: CBE / Telebirr\nValid for 5 days.`);
+                        setCopiedId(msg.id + '-quote');
+                        setTimeout(() => setCopiedId(null), 2000);
+                      }}
+                      className="w-full py-2 bg-neutral-800 hover:bg-neutral-700 active:bg-neutral-900 border border-neutral-700 text-neutral-200 rounded-lg text-xs font-medium flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                    >
+                      {copiedId === msg.id + '-quote' ? (
+                        <><Check className="w-3.5 h-3.5 text-emerald-400" /> Copied to Clipboard!</>
+                      ) : (
+                        <><Copy className="w-3.5 h-3.5" /> Copy for Telegram Chat</>
+                      )}
+                    </button>
+                  </div>
+                )}
+
+                {/* Interactive Follow-up Booking Card */}
+                {msg.sender === 'ai' && msg.cardType === 'followup' && (
+                  <div className="p-3.5 bg-[#121212] border border-neutral-800 rounded-xl space-y-2.5">
+                    <div className="flex items-center justify-between border-b border-neutral-800 pb-2">
+                      <span className="text-[11px] font-semibold uppercase tracking-wider text-emerald-400">Follow-Up Booking</span>
+                      <span className="text-[10px] text-neutral-500 font-mono">Calendar</span>
+                    </div>
+                    <p className="text-xs text-neutral-300 whitespace-pre-wrap leading-relaxed">{msg.text}</p>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleSend("Schedule this follow-up for tomorrow morning")}
+                        className="flex-1 py-2 bg-emerald-600/20 hover:bg-emerald-600/40 border border-emerald-700/40 text-emerald-400 rounded-lg text-xs font-medium flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                      >
+                        <Calendar className="w-3.5 h-3.5" /> Confirm & Schedule
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(msg.text);
+                          setCopiedId(msg.id + '-followup');
+                          setTimeout(() => setCopiedId(null), 2000);
+                        }}
+                        className="py-2 px-3 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-neutral-200 rounded-lg text-xs font-medium flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                      >
+                        {copiedId === msg.id + '-followup' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 {/* Action Chips */}
                 {msg.actionChips && msg.actionChips.length > 0 && (
