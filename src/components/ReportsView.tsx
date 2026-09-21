@@ -23,6 +23,9 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
   const [selectedSourceDetail, setSelectedSourceDetail] = useState<string | null>(null);
   const [slideOverSource, setSlideOverSource] = useState<string | null>(null);
   const [selectedOutcomeTab, setSelectedOutcomeTab] = useState('Evaluation');
+  const [freqPeriod, setFreqPeriod] = useState<'daily' | 'weekly' | 'monthly' | 'custom'>('weekly');
+  const [freqCustomStart, setFreqCustomStart] = useState('');
+  const [freqCustomEnd, setFreqCustomEnd] = useState('');
 
   const barChartRef = useRef<HTMLDivElement>(null);
   const pieChartRef = useRef<HTMLDivElement>(null);
@@ -141,8 +144,32 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
   ];
 
   const productFrequencyData = useMemo(() => {
+    const now = new Date();
+    let start: Date | null = null;
+    let end: Date | null = null;
+    if (freqPeriod === 'daily') {
+      start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      end = now;
+    } else if (freqPeriod === 'weekly') {
+      const day = now.getDay();
+      start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - day);
+      end = now;
+    } else if (freqPeriod === 'monthly') {
+      start = new Date(now.getFullYear(), now.getMonth(), 1);
+      end = now;
+    } else if (freqPeriod === 'custom' && freqCustomStart && freqCustomEnd) {
+      start = new Date(freqCustomStart + 'T00:00:00');
+      end = new Date(freqCustomEnd + 'T23:59:59');
+    }
+
+    const filteredLogs = callLogs.filter((log: any) => {
+      if (!start || !end) return true;
+      const logDate = new Date(log.dateTime || log.call_date);
+      return logDate >= start && logDate <= end;
+    });
+
     const outcomeMap: Record<string, Record<string, { count: number; category: string }>> = {};
-    callLogs.forEach((log: any) => {
+    filteredLogs.forEach((log: any) => {
       const outcome = log.callStatus || 'Evaluation';
       const product = log.productId ? products.find(p => p.id === log.productId) : null;
       const prodName = product?.itemName || log.unlistedProductName || null;
@@ -153,7 +180,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
       outcomeMap[outcome][prodName].count += 1;
     });
     return outcomeMap;
-  }, [callLogs, products]);
+  }, [callLogs, products, freqPeriod, freqCustomStart, freqCustomEnd]);
 
   const outcomeTabs = ['Evaluation', 'Out of Stock', 'Sales', 'Service', 'Complaint', 'Pre-order', 'Out of List'];
 
@@ -458,12 +485,28 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
 
       {/* Weekly Product Frequency Breakdown by Outcome */}
       <div className={`rounded-2xl border ${cardBg} overflow-hidden`}>
-        <div className="p-6 border-b border-zinc-800/60">
-          <h3 className={`font-bold flex items-center gap-2 ${cardText}`}>
-            <BarChart3 className="w-4 h-4 text-amber-400" />
-            <span>Weekly Product Demand & Frequency by Outcome</span>
-          </h3>
-          <p className={`text-xs mt-1 ${subText}`}>Itemized frequency breakdown across customer phone calls and showroom visits</p>
+        <div className="p-6 border-b border-zinc-800/60 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 className={`font-bold flex items-center gap-2 ${cardText}`}>
+              <BarChart3 className="w-4 h-4 text-amber-400" />
+              <span>Product Demand & Frequency by Outcome</span>
+            </h3>
+            <p className={`text-xs mt-1 ${subText}`}>Itemized frequency breakdown across customer phone calls and showroom visits</p>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex bg-zinc-900 p-1 rounded-xl text-xs font-medium">
+              {(['daily', 'weekly', 'monthly', 'custom'] as const).map(p => (
+                <button key={p} onClick={() => setFreqPeriod(p)} className={`px-3 py-1.5 rounded-lg transition-colors capitalize ${freqPeriod === p ? 'bg-zinc-800 text-amber-300 font-bold' : 'text-zinc-400 hover:text-zinc-200'}`}>{p === 'custom' ? 'Custom' : p}</button>
+              ))}
+            </div>
+            {freqPeriod === 'custom' && (
+              <div className="flex items-center gap-1.5">
+                <input type="date" value={freqCustomStart} onChange={e => setFreqCustomStart(e.target.value)} className="bg-zinc-900 border border-zinc-700 text-zinc-200 text-[11px] rounded-lg px-2 py-1.5 focus:outline-none focus:border-amber-500" />
+                <span className="text-zinc-500 text-xs">to</span>
+                <input type="date" value={freqCustomEnd} onChange={e => setFreqCustomEnd(e.target.value)} className="bg-zinc-900 border border-zinc-700 text-zinc-200 text-[11px] rounded-lg px-2 py-1.5 focus:outline-none focus:border-amber-500" />
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="px-6 pt-4 pb-2">
