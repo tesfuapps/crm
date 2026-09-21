@@ -138,7 +138,7 @@ export const IncomingCallWidget: React.FC<IncomingCallWidgetProps> = ({
         ? products.find(p => p.id === selectedProductId) : null;
       onRecordSale({
         id: generateSaleId(),
-        deliveryTicketId: fulfillmentType === 'delivery' && deliveryScope === 'province' ? generateDeliveryTicketId() : undefined,
+        deliveryTicketId: generateDeliveryTicketId(),
         customerId: matchedCustomer.id,
         itemId: selectedProductId !== 'none' && selectedProductId !== 'unlisted' ? selectedProductId : 'unlisted_' + Date.now(),
         quantity: saleQuantity,
@@ -233,7 +233,7 @@ export const IncomingCallWidget: React.FC<IncomingCallWidgetProps> = ({
     if (outcome === 'Sales' && onRecordSale) {
       onRecordSale({
         id: generateSaleId(),
-        deliveryTicketId: fulfillmentType === 'delivery' && deliveryScope === 'province' ? generateDeliveryTicketId() : undefined,
+        deliveryTicketId: generateDeliveryTicketId(),
         customerId: newCustId,
         itemId: selectedProductId !== 'none' && selectedProductId !== 'unlisted' ? selectedProductId : 'unlisted_' + Date.now(),
         quantity: saleQuantity,
