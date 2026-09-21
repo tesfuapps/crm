@@ -543,6 +543,9 @@ export function App() {
             setCustomers(prev => prev.map(c =>
               c.id === newSale.customerId ? { ...c, id: created.id } : c
             ));
+            setSales(prev => prev.map(s =>
+              s.id === newSale.id ? { ...s, customerId: created.id } : s
+            ));
             recordSale({ customer_id: created.id, ...salePayload })
               .catch(err => console.warn('Supabase recordSale offline fallback:', err));
           }
@@ -617,6 +620,9 @@ export function App() {
         if (created?.id) {
           setCustomers(prev => prev.map(c =>
             c.id === newCustomer.id ? { ...c, id: created.id } : c
+          ));
+          setCallLogs(prev => prev.map(log =>
+            log.customerId === newCustomer.id ? { ...log, customerId: created.id } : log
           ));
           logCommunication({ ...commPayload, customer_id: created.id })
             .catch(err => console.warn('Supabase logCommunication offline fallback:', err));
