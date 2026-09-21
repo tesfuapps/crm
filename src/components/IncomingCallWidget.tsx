@@ -53,17 +53,22 @@ export const IncomingCallWidget: React.FC<IncomingCallWidgetProps> = ({
   const [priceFeedback, setPriceFeedback] = useState<string>('accepted');
   const [saleQuantity, setSaleQuantity] = useState(1);
   const [saleAmount, setSaleAmount] = useState('');
-  const [cargoCarrier, setCargoCarrier] = useState('Other');
-  const [cargoTicket, setCargoTicket] = useState('');
-  const [cargoCity, setCargoCity] = useState('');
   const [fulfillmentType, setFulfillmentType] = useState<'pickup' | 'delivery'>('delivery');
   const [deliveryScope, setDeliveryScope] = useState<'addis_ababa' | 'province'>('addis_ababa');
+  const [deliveryChannel, setDeliveryChannel] = useState<'regional_express' | 'market_hub'>('regional_express');
   const [addisDeliveryType, setAddisDeliveryType] = useState<'own_delivery' | 'outsourced'>('own_delivery');
   const [outsourcedProvider, setOutsourcedProvider] = useState('Feres');
   const [deliveryFeePaidBy, setDeliveryFeePaidBy] = useState<'customer' | 'ttm_free'>('customer');
-  const [driverName, setDriverName] = useState('');
-  const [driverPhone, setDriverPhone] = useState('');
+  // Regional Express
+  const [regionalCarrier, setRegionalCarrier] = useState<'Wanza Express' | 'Mela Express Delivery' | 'Go Delivery Ethiopia' | 'Eshi Express' | 'Other Express'>('Mela Express Delivery');
+  const [waybillNumber, setWaybillNumber] = useState('');
+  const [destinationCity, setDestinationCity] = useState('');
+  // Market Hub Dispatch
+  const [dispatchHub, setDispatchHub] = useState<'Mercato Hub' | 'Piassa Branch' | 'Bole Branch' | 'Mexico Branch'>('Mercato Hub');
+  const [vehicleType, setVehicleType] = useState<'Suzuki Carry Van' | 'Isuzu Truck' | 'Pickup / Hilux' | 'Damas' | 'Motorcycle'>('Suzuki Carry Van');
   const [vehiclePlate, setVehiclePlate] = useState('');
+  const [driverPhone, setDriverPhone] = useState('');
+  const [driverName, setDriverName] = useState('');
 
   // Auto-calculate sale amount from product price × quantity
   useEffect(() => {
@@ -116,8 +121,12 @@ export const IncomingCallWidget: React.FC<IncomingCallWidgetProps> = ({
 
     // Validate province delivery fields
     if (outcome === 'Sales' && fulfillmentType === 'delivery' && deliveryScope === 'province') {
-      if (!cargoCarrier) { alert('Please select a bus carrier for regional delivery.'); return; }
-      if (!cargoCity.trim()) { alert('Please enter the destination city for regional delivery.'); return; }
+      if (deliveryChannel === 'regional_express') {
+        if (!destinationCity.trim()) { alert('Please enter the destination city for regional delivery.'); return; }
+      } else {
+        if (!vehiclePlate.trim()) { alert('Please enter the vehicle plate number for dispatch.'); return; }
+        if (!driverPhone.trim()) { alert('Please enter the driver phone number for dispatch.'); return; }
+      }
     }
 
     const newLog: CallLog = {
@@ -152,17 +161,25 @@ export const IncomingCallWidget: React.FC<IncomingCallWidgetProps> = ({
         saleAmount: Number(saleAmount) || 0,
         salesRepId: currentUser.id,
         status: 'confirmed',
-        carrier: cargoCarrier || undefined,
-        ticketNumber: cargoTicket || undefined,
-        destinationCity: cargoCity || undefined,
         fulfillment_type: fulfillmentType,
         delivery_scope: fulfillmentType === 'delivery' ? deliveryScope : undefined,
+        delivery_channel: deliveryScope === 'province' ? deliveryChannel : undefined,
+        // Regional Express
+        regional_carrier: deliveryScope === 'province' && deliveryChannel === 'regional_express' ? regionalCarrier : undefined,
+        waybill_tracking_number: deliveryScope === 'province' && deliveryChannel === 'regional_express' ? waybillNumber || undefined : undefined,
+        destinationCity: destinationCity || undefined,
+        // Market Hub
+        dispatch_hub: deliveryScope === 'province' && deliveryChannel === 'market_hub' ? dispatchHub : undefined,
+        vehicle_type: deliveryScope === 'province' && deliveryChannel === 'market_hub' ? vehicleType : undefined,
+        vehicle_plate_number: deliveryChannel === 'market_hub' ? vehiclePlate || undefined : undefined,
+        driver_name: driverName || undefined,
+        driver_phone: deliveryChannel === 'market_hub' ? driverPhone || undefined : undefined,
+        // Addis Ababa
         addis_delivery_type: deliveryScope === 'addis_ababa' ? addisDeliveryType : undefined,
         outsourced_provider: addisDeliveryType === 'outsourced' ? outsourcedProvider : undefined,
         delivery_fee_paid_by: addisDeliveryType === 'outsourced' ? deliveryFeePaidBy : undefined,
-        driver_name: driverName || undefined,
-        driver_phone: driverPhone || undefined,
-        vehicle_plate_number: vehiclePlate || undefined,
+        carrier: deliveryScope === 'province' && deliveryChannel === 'regional_express' ? regionalCarrier : deliveryScope === 'addis_ababa' && addisDeliveryType === 'outsourced' ? outsourcedProvider : undefined,
+        ticketNumber: waybillNumber || undefined,
       });
     }
     setPhoneInput('');
@@ -173,11 +190,17 @@ export const IncomingCallWidget: React.FC<IncomingCallWidgetProps> = ({
     setDateError('');
     setSaleQuantity(1);
     setSaleAmount('');
-    setCargoCarrier('');
-    setCargoTicket('');
-    setCargoCity('');
     setFulfillmentType('delivery');
     setDeliveryScope('addis_ababa');
+    setDeliveryChannel('regional_express');
+    setRegionalCarrier('Mela Express Delivery');
+    setWaybillNumber('');
+    setDestinationCity('');
+    setDispatchHub('Mercato Hub');
+    setVehicleType('Suzuki Carry Van');
+    setVehiclePlate('');
+    setDriverPhone('');
+    setDriverName('');
     setAddisDeliveryType('own_delivery');
     setOutsourcedProvider('Feres');
     setDeliveryFeePaidBy('customer');
@@ -198,8 +221,12 @@ export const IncomingCallWidget: React.FC<IncomingCallWidgetProps> = ({
 
     // Validate province delivery fields
     if (outcome === 'Sales' && fulfillmentType === 'delivery' && deliveryScope === 'province') {
-      if (!cargoCarrier) { alert('Please select a bus carrier for regional delivery.'); return; }
-      if (!cargoCity.trim()) { alert('Please enter the destination city for regional delivery.'); return; }
+      if (deliveryChannel === 'regional_express') {
+        if (!destinationCity.trim()) { alert('Please enter the destination city for regional delivery.'); return; }
+      } else {
+        if (!vehiclePlate.trim()) { alert('Please enter the vehicle plate number for dispatch.'); return; }
+        if (!driverPhone.trim()) { alert('Please enter the driver phone number for dispatch.'); return; }
+      }
     }
 
     const newCustId = 'c_' + Date.now();
@@ -253,17 +280,22 @@ export const IncomingCallWidget: React.FC<IncomingCallWidgetProps> = ({
         saleAmount: Number(saleAmount) || 0,
         salesRepId: currentUser.id,
         status: 'confirmed',
-        carrier: cargoCarrier || undefined,
-        ticketNumber: cargoTicket || undefined,
-        destinationCity: cargoCity || undefined,
         fulfillment_type: fulfillmentType,
         delivery_scope: fulfillmentType === 'delivery' ? deliveryScope : undefined,
+        delivery_channel: deliveryScope === 'province' ? deliveryChannel : undefined,
+        regional_carrier: deliveryScope === 'province' && deliveryChannel === 'regional_express' ? regionalCarrier : undefined,
+        waybill_tracking_number: deliveryScope === 'province' && deliveryChannel === 'regional_express' ? waybillNumber || undefined : undefined,
+        destinationCity: destinationCity || undefined,
+        dispatch_hub: deliveryScope === 'province' && deliveryChannel === 'market_hub' ? dispatchHub : undefined,
+        vehicle_type: deliveryScope === 'province' && deliveryChannel === 'market_hub' ? vehicleType : undefined,
+        vehicle_plate_number: deliveryChannel === 'market_hub' ? vehiclePlate || undefined : undefined,
+        driver_name: driverName || undefined,
+        driver_phone: deliveryChannel === 'market_hub' ? driverPhone || undefined : undefined,
         addis_delivery_type: deliveryScope === 'addis_ababa' ? addisDeliveryType : undefined,
         outsourced_provider: addisDeliveryType === 'outsourced' ? outsourcedProvider : undefined,
         delivery_fee_paid_by: addisDeliveryType === 'outsourced' ? deliveryFeePaidBy : undefined,
-        driver_name: driverName || undefined,
-        driver_phone: driverPhone || undefined,
-        vehicle_plate_number: vehiclePlate || undefined,
+        carrier: deliveryScope === 'province' && deliveryChannel === 'regional_express' ? regionalCarrier : deliveryScope === 'addis_ababa' && addisDeliveryType === 'outsourced' ? outsourcedProvider : undefined,
+        ticketNumber: waybillNumber || undefined,
       });
     }
     setPhoneInput('');
@@ -276,11 +308,17 @@ export const IncomingCallWidget: React.FC<IncomingCallWidgetProps> = ({
     setDateError('');
     setSaleQuantity(1);
     setSaleAmount('');
-    setCargoCarrier('');
-    setCargoTicket('');
-    setCargoCity('');
     setFulfillmentType('delivery');
     setDeliveryScope('addis_ababa');
+    setDeliveryChannel('regional_express');
+    setRegionalCarrier('Mela Express Delivery');
+    setWaybillNumber('');
+    setDestinationCity('');
+    setDispatchHub('Mercato Hub');
+    setVehicleType('Suzuki Carry Van');
+    setVehiclePlate('');
+    setDriverPhone('');
+    setDriverName('');
     setAddisDeliveryType('own_delivery');
     setOutsourcedProvider('Feres');
     setDeliveryFeePaidBy('customer');
@@ -528,31 +566,81 @@ export const IncomingCallWidget: React.FC<IncomingCallWidgetProps> = ({
                             )}
 
                             {deliveryScope === 'province' && (
-                              <div className="space-y-2 pt-1">
-                                <p className="text-[10px] font-bold uppercase text-emerald-500/70 tracking-wider">Bus Cargo Tracker</p>
-                                <div className="grid grid-cols-3 gap-2">
-                                  <div>
-                                    <label className={`block text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-neutral-400' : 'text-slate-600'}`}>Carrier</label>
-                                    <select value={cargoCarrier} onChange={(e) => setCargoCarrier(e.target.value)} className={`${inputClasses} text-[11px]`}>
-                                      <option value="">None</option>
-                                      <option value="Selam Bus">Selam Bus</option>
-                                      <option value="Sky Bus">Sky Bus</option>
-                                      <option value="Libus">Libus</option>
-                                      <option value="Golden Bus">Golden Bus</option>
-                                      <option value="Habesha Bus">Habesha Bus</option>
-                                      <option value="Other">Other</option>
-                                    </select>
-                                  </div>
-                                  <div>
-                                    <label className={`block text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-neutral-400' : 'text-slate-600'}`}>Ticket #</label>
-                                    <input type="text" value={cargoTicket} onChange={(e) => setCargoTicket(e.target.value)} placeholder="e.g. 48192" className={`${inputClasses} text-[11px] font-mono`} />
-                                  </div>
-                                  <div>
-                                    <label className={`block text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-neutral-400' : 'text-slate-600'}`}>City</label>
-                                    <input type="text" value={cargoCity} onChange={(e) => setCargoCity(e.target.value)} placeholder="e.g. Hawassa" className={`${inputClasses} text-[11px]`} />
+                              <div className="space-y-3 pt-2 border-t border-neutral-800">
+                                <div>
+                                  <label className={`block text-[10px] font-bold uppercase mb-1.5 ${isDark ? 'text-neutral-400' : 'text-slate-600'}`}>Delivery Channel</label>
+                                  <div className="grid grid-cols-2 gap-2">
+                                    <button type="button" onClick={() => setDeliveryChannel('regional_express')}
+                                      className={`py-2 px-2 rounded-lg border font-medium transition-all text-[11px] ${deliveryChannel === 'regional_express' ? 'bg-amber-500/20 border-amber-500 text-amber-300 font-bold' : 'bg-[#121212] border-neutral-700 text-neutral-400'}`}>
+                                      📦 Regional Express Courier
+                                    </button>
+                                    <button type="button" onClick={() => setDeliveryChannel('market_hub')}
+                                      className={`py-2 px-2 rounded-lg border font-medium transition-all text-[11px] ${deliveryChannel === 'market_hub' ? 'bg-amber-500/20 border-amber-500 text-amber-300 font-bold' : 'bg-[#121212] border-neutral-700 text-neutral-400'}`}>
+                                      🚚 Market Hub Truck Dispatch
+                                    </button>
                                   </div>
                                 </div>
-                                <p className="text-[10px] text-zinc-500 italic">Carrier and City are required. Ticket # is optional (fill when bus departs).</p>
+
+                                {deliveryChannel === 'regional_express' && (
+                                  <div className="space-y-2 pt-2 border-t border-neutral-800">
+                                    <div className="grid grid-cols-2 gap-2">
+                                      <div>
+                                        <label className={`block text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-neutral-400' : 'text-slate-600'}`}>Express Courier *</label>
+                                        <select value={regionalCarrier} onChange={(e) => setRegionalCarrier(e.target.value as any)} className={`${inputClasses} text-[11px]`}>
+                                          <option value="Mela Express Delivery">Mela Express (9903)</option>
+                                          <option value="Wanza Express">Wanza Express (9575)</option>
+                                          <option value="Go Delivery Ethiopia">Go Delivery</option>
+                                          <option value="Eshi Express">Eshi Express</option>
+                                          <option value="Other Express">Other Express</option>
+                                        </select>
+                                      </div>
+                                      <div>
+                                        <label className={`block text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-neutral-400' : 'text-slate-600'}`}>Destination City *</label>
+                                        <input type="text" value={destinationCity} onChange={(e) => setDestinationCity(e.target.value)} placeholder="e.g. Hawassa, Adama" className={`${inputClasses} text-[11px]`} />
+                                      </div>
+                                    </div>
+                                    <div>
+                                      <label className={`block text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-neutral-400' : 'text-slate-600'}`}>Waybill / Tracking # *</label>
+                                      <input type="text" value={waybillNumber} onChange={(e) => setWaybillNumber(e.target.value)} placeholder="e.g. ML-49182" className={`${inputClasses} text-[11px] font-mono`} />
+                                    </div>
+                                  </div>
+                                )}
+
+                                {deliveryChannel === 'market_hub' && (
+                                  <div className="space-y-2 pt-2 border-t border-neutral-800">
+                                    <div className="grid grid-cols-2 gap-2">
+                                      <div>
+                                        <label className={`block text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-neutral-400' : 'text-slate-600'}`}>Dispatch Hub *</label>
+                                        <select value={dispatchHub} onChange={(e) => setDispatchHub(e.target.value as any)} className={`${inputClasses} text-[11px]`}>
+                                          <option value="Mercato Hub">Mercato Hub</option>
+                                          <option value="Piassa Branch">Piassa Branch</option>
+                                          <option value="Bole Branch">Bole Branch</option>
+                                          <option value="Mexico Branch">Mexico Branch</option>
+                                        </select>
+                                      </div>
+                                      <div>
+                                        <label className={`block text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-neutral-400' : 'text-slate-600'}`}>Vehicle Type *</label>
+                                        <select value={vehicleType} onChange={(e) => setVehicleType(e.target.value as any)} className={`${inputClasses} text-[11px]`}>
+                                          <option value="Suzuki Carry Van">Suzuki Carry Van</option>
+                                          <option value="Isuzu Truck">Isuzu Truck</option>
+                                          <option value="Pickup / Hilux">Pickup / Hilux</option>
+                                          <option value="Damas">Damas</option>
+                                          <option value="Motorcycle">Motorcycle</option>
+                                        </select>
+                                      </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                      <div>
+                                        <label className={`block text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-neutral-400' : 'text-slate-600'}`}>Plate # *</label>
+                                        <input type="text" value={vehiclePlate} onChange={(e) => setVehiclePlate(e.target.value)} placeholder="e.g. Code 3 - 58219 AA" className={`${inputClasses} text-[11px] font-mono`} />
+                                      </div>
+                                      <div>
+                                        <label className={`block text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-neutral-400' : 'text-slate-600'}`}>Driver Phone *</label>
+                                        <input type="text" value={driverPhone} onChange={(e) => setDriverPhone(e.target.value)} placeholder="09..." className={`${inputClasses} text-[11px] font-mono`} />
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             )}
                           </div>
@@ -840,31 +928,81 @@ export const IncomingCallWidget: React.FC<IncomingCallWidgetProps> = ({
                             )}
 
                             {deliveryScope === 'province' && (
-                              <div className="space-y-2 pt-1">
-                                <p className="text-[10px] font-bold uppercase text-emerald-500/70 tracking-wider">Bus Cargo Tracker</p>
-                                <div className="grid grid-cols-3 gap-2">
-                                  <div>
-                                    <label className={`block text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-neutral-400' : 'text-slate-600'}`}>Carrier</label>
-                                    <select value={cargoCarrier} onChange={(e) => setCargoCarrier(e.target.value)} className={`${inputClasses} text-[11px]`}>
-                                      <option value="">None</option>
-                                      <option value="Selam Bus">Selam Bus</option>
-                                      <option value="Sky Bus">Sky Bus</option>
-                                      <option value="Libus">Libus</option>
-                                      <option value="Golden Bus">Golden Bus</option>
-                                      <option value="Habesha Bus">Habesha Bus</option>
-                                      <option value="Other">Other</option>
-                                    </select>
-                                  </div>
-                                  <div>
-                                    <label className={`block text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-neutral-400' : 'text-slate-600'}`}>Ticket #</label>
-                                    <input type="text" value={cargoTicket} onChange={(e) => setCargoTicket(e.target.value)} placeholder="e.g. 48192" className={`${inputClasses} text-[11px] font-mono`} />
-                                  </div>
-                                  <div>
-                                    <label className={`block text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-neutral-400' : 'text-slate-600'}`}>City</label>
-                                    <input type="text" value={cargoCity} onChange={(e) => setCargoCity(e.target.value)} placeholder="e.g. Hawassa" className={`${inputClasses} text-[11px]`} />
+                              <div className="space-y-3 pt-2 border-t border-neutral-800">
+                                <div>
+                                  <label className={`block text-[10px] font-bold uppercase mb-1.5 ${isDark ? 'text-neutral-400' : 'text-slate-600'}`}>Delivery Channel</label>
+                                  <div className="grid grid-cols-2 gap-2">
+                                    <button type="button" onClick={() => setDeliveryChannel('regional_express')}
+                                      className={`py-2 px-2 rounded-lg border font-medium transition-all text-[11px] ${deliveryChannel === 'regional_express' ? 'bg-amber-500/20 border-amber-500 text-amber-300 font-bold' : 'bg-[#121212] border-neutral-700 text-neutral-400'}`}>
+                                      📦 Regional Express Courier
+                                    </button>
+                                    <button type="button" onClick={() => setDeliveryChannel('market_hub')}
+                                      className={`py-2 px-2 rounded-lg border font-medium transition-all text-[11px] ${deliveryChannel === 'market_hub' ? 'bg-amber-500/20 border-amber-500 text-amber-300 font-bold' : 'bg-[#121212] border-neutral-700 text-neutral-400'}`}>
+                                      🚚 Market Hub Truck Dispatch
+                                    </button>
                                   </div>
                                 </div>
-                                <p className="text-[10px] text-zinc-500 italic">Carrier and City are required. Ticket # is optional (fill when bus departs).</p>
+
+                                {deliveryChannel === 'regional_express' && (
+                                  <div className="space-y-2 pt-2 border-t border-neutral-800">
+                                    <div className="grid grid-cols-2 gap-2">
+                                      <div>
+                                        <label className={`block text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-neutral-400' : 'text-slate-600'}`}>Express Courier *</label>
+                                        <select value={regionalCarrier} onChange={(e) => setRegionalCarrier(e.target.value as any)} className={`${inputClasses} text-[11px]`}>
+                                          <option value="Mela Express Delivery">Mela Express (9903)</option>
+                                          <option value="Wanza Express">Wanza Express (9575)</option>
+                                          <option value="Go Delivery Ethiopia">Go Delivery</option>
+                                          <option value="Eshi Express">Eshi Express</option>
+                                          <option value="Other Express">Other Express</option>
+                                        </select>
+                                      </div>
+                                      <div>
+                                        <label className={`block text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-neutral-400' : 'text-slate-600'}`}>Destination City *</label>
+                                        <input type="text" value={destinationCity} onChange={(e) => setDestinationCity(e.target.value)} placeholder="e.g. Hawassa, Adama" className={`${inputClasses} text-[11px]`} />
+                                      </div>
+                                    </div>
+                                    <div>
+                                      <label className={`block text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-neutral-400' : 'text-slate-600'}`}>Waybill / Tracking # *</label>
+                                      <input type="text" value={waybillNumber} onChange={(e) => setWaybillNumber(e.target.value)} placeholder="e.g. ML-49182" className={`${inputClasses} text-[11px] font-mono`} />
+                                    </div>
+                                  </div>
+                                )}
+
+                                {deliveryChannel === 'market_hub' && (
+                                  <div className="space-y-2 pt-2 border-t border-neutral-800">
+                                    <div className="grid grid-cols-2 gap-2">
+                                      <div>
+                                        <label className={`block text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-neutral-400' : 'text-slate-600'}`}>Dispatch Hub *</label>
+                                        <select value={dispatchHub} onChange={(e) => setDispatchHub(e.target.value as any)} className={`${inputClasses} text-[11px]`}>
+                                          <option value="Mercato Hub">Mercato Hub</option>
+                                          <option value="Piassa Branch">Piassa Branch</option>
+                                          <option value="Bole Branch">Bole Branch</option>
+                                          <option value="Mexico Branch">Mexico Branch</option>
+                                        </select>
+                                      </div>
+                                      <div>
+                                        <label className={`block text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-neutral-400' : 'text-slate-600'}`}>Vehicle Type *</label>
+                                        <select value={vehicleType} onChange={(e) => setVehicleType(e.target.value as any)} className={`${inputClasses} text-[11px]`}>
+                                          <option value="Suzuki Carry Van">Suzuki Carry Van</option>
+                                          <option value="Isuzu Truck">Isuzu Truck</option>
+                                          <option value="Pickup / Hilux">Pickup / Hilux</option>
+                                          <option value="Damas">Damas</option>
+                                          <option value="Motorcycle">Motorcycle</option>
+                                        </select>
+                                      </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                      <div>
+                                        <label className={`block text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-neutral-400' : 'text-slate-600'}`}>Plate # *</label>
+                                        <input type="text" value={vehiclePlate} onChange={(e) => setVehiclePlate(e.target.value)} placeholder="e.g. Code 3 - 58219 AA" className={`${inputClasses} text-[11px] font-mono`} />
+                                      </div>
+                                      <div>
+                                        <label className={`block text-[10px] font-bold uppercase mb-1 ${isDark ? 'text-neutral-400' : 'text-slate-600'}`}>Driver Phone *</label>
+                                        <input type="text" value={driverPhone} onChange={(e) => setDriverPhone(e.target.value)} placeholder="09..." className={`${inputClasses} text-[11px] font-mono`} />
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             )}
                           </div>

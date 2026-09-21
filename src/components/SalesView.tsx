@@ -118,13 +118,18 @@ export const SalesView: React.FC<SalesViewProps> = ({ sales, products, customers
     const prod = products.find(p => p.id === sale.itemId);
     if (!cust) return;
     const itemName = prod ? prod.itemName : 'Item';
+    const custLine = `${cust.customerName}${cust.companyName ? ' (' + cust.companyName + ')' : ''}`;
     let msg = '';
     if (sale.fulfillment_type === 'pickup') {
-      msg = `📦 TTM Pickup\n\nCustomer: ${cust.customerName}${cust.companyName ? ' (' + cust.companyName + ')' : ''}\nItem: ${itemName} × ${sale.quantity}\n\nPickup at TTM Showroom. Please bring ID.`;
-    } else if (sale.delivery_scope === 'province') {
-      msg = `🚚 TTM Regional Delivery\n\nTicket: ${sale.deliveryTicketId || 'N/A'}\nCustomer: ${cust.customerName}\nPhone: ${cust.phoneNumber}\nItem: ${itemName} × ${sale.quantity}\nCity: ${sale.destinationCity || 'N/A'}\nCarrier: ${sale.carrier || 'N/A'}\nTicket #: ${sale.ticketNumber || 'N/A'}\n\nStatus: In Transit`;
+      msg = `📦 TTM Equipment — Showroom Pickup Confirmed\n\nCustomer: ${custLine}\nItem: ${itemName} × ${sale.quantity}\nTicket: ${sale.deliveryTicketId || 'N/A'}\n\nPlease bring your ID when collecting.`;
+    } else if (sale.delivery_scope === 'province' && sale.delivery_channel === 'regional_express') {
+      const carrierContacts: Record<string, string> = { 'Wanza Express': 'Short Code: 9575', 'Mela Express Delivery': 'Short Code: 9903 / Tel: +251 95 151 8651', 'Go Delivery Ethiopia': 'Tel: +251 11 619 8020', 'Eshi Express': 'Tel: +251 92 254 3669' };
+      const contact = carrierContacts[sale.regional_carrier || ''] || '';
+      msg = `📦 TTM Equipment — Regional Express Cargo Dispatched\n\nCustomer: ${custLine}\nItem: ${itemName} × ${sale.quantity}\nTicket: ${sale.deliveryTicketId || 'N/A'}\nDestination: ${sale.destinationCity || 'N/A'}\nCarrier: ${sale.regional_carrier || sale.carrier || 'N/A'}${contact ? ' (' + contact + ')' : ''}\nWaybill / Tracking #: ${sale.waybill_tracking_number || sale.ticketNumber || 'N/A'}\n\nYour shipment is in transit. Please present your tracking code upon arrival.`;
+    } else if (sale.delivery_scope === 'province' && sale.delivery_channel === 'market_hub') {
+      msg = `🚚 TTM Equipment — Market Hub Dispatch\n\nCustomer: ${custLine}\nItem: ${itemName} × ${sale.quantity}\nTicket: ${sale.deliveryTicketId || 'N/A'}\nDispatch Hub: ${sale.dispatch_hub || 'Mercato Hub'}\nVehicle: ${sale.vehicle_type || 'Mini-Truck'}\nPlate #: ${sale.vehicle_plate_number || 'N/A'}\nDriver Phone: ${sale.driver_phone || 'N/A'}\n\nYour cargo has been dispatched. Please keep your phone available for arrival!`;
     } else {
-      msg = `🚗 TTM Addis Delivery\n\nCustomer: ${cust.customerName}\nPhone: ${cust.phoneNumber}\nItem: ${itemName} × ${sale.quantity}\n\nDelivery to Addis Ababa.`;
+      msg = `🚚 TTM Equipment — Addis Ababa Delivery\n\nCustomer: ${custLine}\nItem: ${itemName} × ${sale.quantity}\nTicket: ${sale.deliveryTicketId || 'N/A'}\nDelivery to Addis Ababa.`;
     }
     navigator.clipboard.writeText(msg).then(() => {
       setCopiedSaleId(sale.id);

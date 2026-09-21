@@ -146,6 +146,10 @@ export interface ProductItem {
 export type DeliveryScope = 'pickup' | 'addis_ababa' | 'province';
 export type AddisDeliveryType = 'own_delivery' | 'outsourced';
 export type DeliveryFeePaidBy = 'customer' | 'ttm_free';
+export type DeliveryChannel = 'regional_express' | 'market_hub';
+export type RegionalCarrier = 'Wanza Express' | 'Mela Express Delivery' | 'Go Delivery Ethiopia' | 'Eshi Express' | 'Other Express';
+export type DispatchHub = 'Mercato Hub' | 'Piassa Branch' | 'Bole Branch' | 'Mexico Branch';
+export type VehicleType = 'Suzuki Carry Van' | 'Isuzu Truck' | 'Pickup / Hilux' | 'Damas' | 'Motorcycle';
 
 export interface ProductSale {
   id: string;
@@ -162,9 +166,16 @@ export interface ProductSale {
   destinationCity?: string;
   fulfillment_type?: 'pickup' | 'delivery';
   delivery_scope?: DeliveryScope;
+  delivery_channel?: DeliveryChannel;
   addis_delivery_type?: AddisDeliveryType;
   outsourced_provider?: string;
   delivery_fee_paid_by?: DeliveryFeePaidBy;
+  // Regional Express
+  regional_carrier?: RegionalCarrier;
+  waybill_tracking_number?: string;
+  // Market Hub Dispatch
+  dispatch_hub?: DispatchHub;
+  vehicle_type?: VehicleType;
   vehicle_plate_number?: string;
   driver_name?: string;
   driver_phone?: string;
