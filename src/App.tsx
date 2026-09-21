@@ -641,7 +641,7 @@ export function App() {
 
   return (
     <div className="h-screen w-screen overflow-hidden flex bg-[#09090b] text-zinc-100">
-      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} onCollapsedChange={setSidebarCollapsed} />
+      <Sidebar activeTab={activeTab} setActiveTab={(tab) => { setSelectedCustomerForDetail(null); setActiveTab(tab); }} onCollapsedChange={setSidebarCollapsed} />
 
       <div className={`flex-1 flex flex-col h-full overflow-hidden bg-[#09090b] transition-all duration-300 ease-in-out ${sidebarCollapsed ? 'ml-18' : 'ml-64'}`}>
         <Header

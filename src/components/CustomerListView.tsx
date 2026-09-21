@@ -55,7 +55,11 @@ export const CustomerListView: React.FC<CustomerListViewProps> = ({
   const drawerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (initialSelectedCustomer) setSelectedCustomer(initialSelectedCustomer);
+    if (initialSelectedCustomer) {
+      setSelectedCustomer(initialSelectedCustomer);
+    } else {
+      setSelectedCustomer(null);
+    }
   }, [initialSelectedCustomer]);
 
   useEffect(() => {
