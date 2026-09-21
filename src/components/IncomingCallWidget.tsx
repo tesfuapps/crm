@@ -53,7 +53,7 @@ export const IncomingCallWidget: React.FC<IncomingCallWidgetProps> = ({
   const [priceFeedback, setPriceFeedback] = useState<string>('accepted');
   const [saleQuantity, setSaleQuantity] = useState(1);
   const [saleAmount, setSaleAmount] = useState('');
-  const [cargoCarrier, setCargoCarrier] = useState('');
+  const [cargoCarrier, setCargoCarrier] = useState('Other');
   const [cargoTicket, setCargoTicket] = useState('');
   const [cargoCity, setCargoCity] = useState('');
   const [fulfillmentType, setFulfillmentType] = useState<'pickup' | 'delivery'>('delivery');
@@ -112,6 +112,12 @@ export const IncomingCallWidget: React.FC<IncomingCallWidgetProps> = ({
     if (needsFollowUp && !isValidFollowUpDate(nextFollowUpDate)) {
       setDateError(nextFollowUpDate.trim() ? 'Date must be valid and not in the past.' : 'Next follow-up date is required.');
       return;
+    }
+
+    // Validate province delivery fields
+    if (outcome === 'Sales' && fulfillmentType === 'delivery' && deliveryScope === 'province') {
+      if (!cargoCarrier) { alert('Please select a bus carrier for regional delivery.'); return; }
+      if (!cargoCity.trim()) { alert('Please enter the destination city for regional delivery.'); return; }
     }
 
     const newLog: CallLog = {
@@ -188,6 +194,12 @@ export const IncomingCallWidget: React.FC<IncomingCallWidgetProps> = ({
     if (needsFollowUp && !isValidFollowUpDate(nextFollowUpDate)) {
       setDateError(nextFollowUpDate.trim() ? 'Date must be valid and not in the past.' : 'Next follow-up date is required.');
       return;
+    }
+
+    // Validate province delivery fields
+    if (outcome === 'Sales' && fulfillmentType === 'delivery' && deliveryScope === 'province') {
+      if (!cargoCarrier) { alert('Please select a bus carrier for regional delivery.'); return; }
+      if (!cargoCity.trim()) { alert('Please enter the destination city for regional delivery.'); return; }
     }
 
     const newCustId = 'c_' + Date.now();
@@ -540,6 +552,7 @@ export const IncomingCallWidget: React.FC<IncomingCallWidgetProps> = ({
                                     <input type="text" value={cargoCity} onChange={(e) => setCargoCity(e.target.value)} placeholder="e.g. Hawassa" className={`${inputClasses} text-[11px]`} />
                                   </div>
                                 </div>
+                                <p className="text-[10px] text-zinc-500 italic">Carrier and City are required. Ticket # is optional (fill when bus departs).</p>
                               </div>
                             )}
                           </div>
@@ -851,6 +864,7 @@ export const IncomingCallWidget: React.FC<IncomingCallWidgetProps> = ({
                                     <input type="text" value={cargoCity} onChange={(e) => setCargoCity(e.target.value)} placeholder="e.g. Hawassa" className={`${inputClasses} text-[11px]`} />
                                   </div>
                                 </div>
+                                <p className="text-[10px] text-zinc-500 italic">Carrier and City are required. Ticket # is optional (fill when bus departs).</p>
                               </div>
                             )}
                           </div>
