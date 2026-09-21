@@ -563,6 +563,9 @@ export function App() {
     setReminders(prev => [...prev, ...automation.reminders.filter(item => !prev.some(existing => existing.id === item.id))]);
     setNotifications(prev => [...automation.notifications, ...prev]);
     updatedCustomer = { ...updatedCustomer, lastContactedDate: newLog.dateTime };
+    if (newCustomer) {
+      setCustomers(prev => prev.some(c => c.id === newCustomer.id) ? prev : [...prev, newCustomer]);
+    }
     setCallLogs(prev => [newLog, ...prev]);
     if (updatedCustomer && Object.keys(updatedCustomer).length > 0) {
       setCustomers(prev => prev.map(c => {
