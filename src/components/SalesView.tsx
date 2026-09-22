@@ -129,7 +129,7 @@ export const SalesView: React.FC<SalesViewProps> = ({ sales, products, customers
     } else if (sale.delivery_scope === 'province' && sale.delivery_channel === 'market_hub') {
       msg = `🚚 TTM Equipment — Market Hub Dispatch\n\nCustomer: ${custLine}\nItem: ${itemName} × ${sale.quantity}\nTicket: ${sale.deliveryTicketId || 'N/A'}\nDispatch Hub: ${sale.dispatch_hub || 'Mercato Hub'}\nVehicle: ${sale.vehicle_type || 'Mini-Truck'}\nPlate #: ${sale.vehicle_plate_number || 'N/A'}\nDriver Phone: ${sale.driver_phone || 'N/A'}\n\nYour cargo has been dispatched. Please keep your phone available for arrival!`;
     } else {
-      msg = `🚚 TTM Equipment — Addis Ababa Delivery\n\nCustomer: ${custLine}\nItem: ${itemName} × ${sale.quantity}\nTicket: ${sale.deliveryTicketId || 'N/A'}\nDelivery to Addis Ababa.`;
+      msg = `🚚 TTM Equipment — Addis Ababa Delivery\n\nCustomer: ${custLine}\nItem: ${itemName} × ${sale.quantity}\nTicket: ${sale.deliveryTicketId || 'N/A'}\nProvider: ${sale.outsourced_provider || 'Own Driver'}\nDriver: ${sale.driver_name || 'N/A'}\nPhone: ${sale.driver_phone || 'N/A'}\nPlate: ${sale.vehicle_plate_number || 'N/A'}`;
     }
     navigator.clipboard.writeText(msg).then(() => {
       setCopiedSaleId(sale.id);

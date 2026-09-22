@@ -4,7 +4,6 @@ import {
   INITIAL_CALL_LOGS, INITIAL_PRODUCTS, INITIAL_SALES,
   INITIAL_NOTIFICATIONS, INITIAL_LABELS, INITIAL_FILTER_PRESETS,
 } from './data/mockData';
-import { OFFICIAL_TTM_CATALOG } from './data/officialCatalog';
 import {
   Customer, CallLog, User, Branch, ProductItem, ProductSale,
   CustomerStage, Notification, Label, FilterPreset, BranchReassignmentEntry, FollowUpReminder,
@@ -29,19 +28,8 @@ import { CommandPalette } from './components/CommandPalette';
 import { AiCopilotDrawer } from './components/AiCopilotDrawer';
 import { SystemHelpModal } from './components/SystemHelpModal';
 import { callAutomation, afterSalesReminder, requiresFollowUp } from './services/followUpService';
-import { getCustomers, getCommunications, getProducts, getNotifications, getSales, logCommunication, recordSale, createCustomer, updateCustomer } from './services/api';
+import { getCustomers, getCommunications, getProducts, getNotifications, getSales, getFollowUpReminders, logCommunication, recordSale, createCustomer, updateCustomer } from './services/api';
 import { useRealtimeSync } from './hooks/useRealtimeSync';
-
-const CURRENT_SCHEMA_VERSION = 4;
-try {
-  const savedVersion = Number(localStorage.getItem('ttm_schema_version') || 0);
-  if (savedVersion < CURRENT_SCHEMA_VERSION) {
-    console.warn(`Upgrading TTM CRM schema from v${savedVersion} to v${CURRENT_SCHEMA_VERSION}...`);
-    localStorage.removeItem('ttm_crm_customers');
-    localStorage.removeItem('ttm_crm_call_logs');
-    localStorage.setItem('ttm_schema_version', String(CURRENT_SCHEMA_VERSION));
-  }
-} catch {}
 
 export function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
@@ -51,14 +39,8 @@ export function App() {
       return false;
     }
   });
-  const [branches, setBranches] = useState<Branch[]>(() => {
-    const saved = localStorage.getItem('ttm_crm_branches');
-    return saved ? JSON.parse(saved) : INITIAL_BRANCHES;
-  });
-  const [users, setUsers] = useState<User[]>(() => {
-    const saved = localStorage.getItem('ttm_crm_users');
-    return saved ? JSON.parse(saved) : INITIAL_USERS;
-  });
+  const [branches, setBranches] = useState<Branch[]>(INITIAL_BRANCHES);
+  const [users, setUsers] = useState<User[]>(INITIAL_USERS);
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     const saved = localStorage.getItem('ttm_crm_theme');
     return (saved as 'light' | 'dark') || 'dark';
@@ -70,70 +52,25 @@ export function App() {
   const [selectedBranchId, setSelectedBranchId] = useState<string>('all');
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [searchTerm, setSearchTerm] = useState<string>('');
-  const [customers, setCustomers] = useState<Customer[]>(() => {
-    const saved = localStorage.getItem('ttm_crm_customers');
-    return saved ? JSON.parse(saved) : INITIAL_CUSTOMERS;
-  });
-  const [callLogs, setCallLogs] = useState<CallLog[]>(() => {
-    const saved = localStorage.getItem('ttm_crm_call_logs');
-    return saved ? JSON.parse(saved) : INITIAL_CALL_LOGS;
-  });
-  const [products, setProducts] = useState<ProductItem[]>(() => {
-    const saved = localStorage.getItem('ttm_crm_products');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        const hasOldSaaS = parsed.some((p: any) =>
-          p.itemName?.includes('Abyssinia Cloud ERP') ||
-          p.itemName?.includes('EthioPOS') ||
-          p.itemName?.includes('Habesha Biometric') ||
-          p.itemCategory === 'Software' ||
-          p.itemCategory === 'Services' ||
-          p.itemCategory === 'SaaS'
-        );
-        if (hasOldSaaS || parsed.length < 10) {
-          localStorage.setItem('ttm_crm_products', JSON.stringify(OFFICIAL_TTM_CATALOG));
-          return OFFICIAL_TTM_CATALOG;
-        }
-        return parsed;
-      } catch { /* fall through */ }
-    }
-    localStorage.setItem('ttm_crm_products', JSON.stringify(INITIAL_PRODUCTS));
-    return INITIAL_PRODUCTS;
-  });
-  const [sales, setSales] = useState<ProductSale[]>(() => {
-    const saved = localStorage.getItem('ttm_crm_sales');
-    return saved ? JSON.parse(saved) : INITIAL_SALES;
-  });
-  const [notifications, setNotifications] = useState<Notification[]>(() => {
-    const saved = localStorage.getItem('ttm_crm_notifications');
-    return saved ? JSON.parse(saved) : INITIAL_NOTIFICATIONS;
-  });
-  const [labels, setLabels] = useState<Label[]>(() => {
-    const saved = localStorage.getItem('ttm_crm_labels');
-    return saved ? JSON.parse(saved) : INITIAL_LABELS;
-  });
-  const [filterPresets, setFilterPresets] = useState<FilterPreset[]>(() => {
-    const saved = localStorage.getItem('ttm_crm_filter_presets');
-    return saved ? JSON.parse(saved) : INITIAL_FILTER_PRESETS;
-  });
-  const [reminders, setReminders] = useState<FollowUpReminder[]>(() => {
-    const saved = localStorage.getItem('ttm_crm_reminders');
-    return saved ? JSON.parse(saved) : [];
-  });
-  useEffect(() => {
-    localStorage.setItem('ttm_crm_reminders', JSON.stringify(reminders));
-  }, [reminders]);
+  const [customers, setCustomers] = useState<Customer[]>(INITIAL_CUSTOMERS);
+  const [callLogs, setCallLogs] = useState<CallLog[]>(INITIAL_CALL_LOGS);
+  const [products, setProducts] = useState<ProductItem[]>(INITIAL_PRODUCTS);
+  const [sales, setSales] = useState<ProductSale[]>(INITIAL_SALES);
+  const [notifications, setNotifications] = useState<Notification[]>(INITIAL_NOTIFICATIONS);
+  const [labels, setLabels] = useState<Label[]>(INITIAL_LABELS);
+  const [filterPresets, setFilterPresets] = useState<FilterPreset[]>(INITIAL_FILTER_PRESETS);
+  const [reminders, setReminders] = useState<FollowUpReminder[]>([]);
 
   useEffect(() => {
     async function loadSupabaseData() {
       try {
-        const [remoteCusts, remoteComms, remoteProds, remoteNotifs, remoteSales] = await Promise.all([
+        const [remoteCusts, remoteComms, remoteProds, remoteNotifs, remoteSales, remoteReminders] = await Promise.all([
           getCustomers().catch(() => []),
           getCommunications().catch(() => []),
           getProducts().catch(() => []),
           getNotifications().catch(() => []),
           getSales().catch(() => []),
+          getFollowUpReminders().catch(() => []),
         ]);
         if (remoteCusts.length > 0) {
           setCustomers(remoteCusts.map((c: any) => ({
@@ -195,7 +132,7 @@ export function App() {
         }
         if (remoteSales.length > 0) {
           setSales(remoteSales.map((s: any) => ({
-            id: s.id,
+            id: s.sale_code || s.id,
             customerId: s.customer_id,
             itemId: s.product_id,
             itemName: s.product_name,
@@ -203,17 +140,36 @@ export function App() {
             saleAmount: Number(s.sale_amount_etb) || 0,
             saleDate: s.created_at,
             salesRepId: s.sales_rep_id || currentUser.id,
+            deliveryTicketId: s.delivery_ticket_code || s.delivery_ticket_id || null,
             branchId: s.branch_name === 'Piassa Branch' ? 'b3' : s.branch_name === 'Mexico Branch' ? 'b2' : 'b1',
             status: 'confirmed',
-            fulfillmentType: s.fulfillment_type || 'pickup',
-            deliveryScope: s.delivery_scope || null,
-            addisDeliveryType: s.addis_delivery_type || null,
-            regionalCarrier: s.regional_carrier || null,
-            waybillTrackingNumber: s.waybill_tracking_number || null,
-            dispatchHub: s.dispatch_hub || null,
-            vehicleType: s.vehicle_type || null,
-            vehiclePlateNumber: s.vehicle_plate_number || null,
-            driverPhone: s.driver_phone || null,
+            fulfillment_type: s.fulfillment_type || 'pickup',
+            delivery_scope: s.delivery_scope || null,
+            delivery_channel: s.delivery_channel || null,
+            addis_delivery_type: s.addis_delivery_type || null,
+            outsourced_provider: s.outsourced_provider || null,
+            regional_carrier: s.regional_carrier || null,
+            waybill_tracking_number: s.waybill_tracking_number || null,
+            dispatch_hub: s.dispatch_hub || null,
+            vehicle_type: s.vehicle_type || null,
+            vehicle_plate_number: s.vehicle_plate_number || null,
+            driver_name: s.driver_name || null,
+            driver_phone: s.driver_phone || null,
+            destinationCity: s.destination_city || null,
+            carrier: s.regional_carrier || s.outsourced_provider || null,
+          })));
+        }
+        if (remoteReminders.length > 0) {
+          setReminders(remoteReminders.map((r: any) => ({
+            id: r.id,
+            customerId: r.customer_id,
+            assignedRepId: r.assigned_rep_id || 'u1',
+            title: r.title,
+            purpose: r.purpose || '',
+            dueDate: r.due_date,
+            status: r.status,
+            reminderType: r.reminder_type || 'manual',
+            createdAt: r.created_at,
           })));
         }
       } catch (err) {
@@ -304,17 +260,23 @@ export function App() {
           saleAmount: Number(s.sale_amount_etb) || 0,
           saleDate: s.created_at,
           salesRepId: s.sales_rep_id || currentUser.id,
+          deliveryTicketId: s.delivery_ticket_id || null,
           branchId: s.branch_name === 'Piassa Branch' ? 'b3' : s.branch_name === 'Mexico Branch' ? 'b2' : 'b1',
           status: 'confirmed',
-          fulfillmentType: s.fulfillment_type || 'pickup',
-          deliveryScope: s.delivery_scope || null,
-          addisDeliveryType: s.addis_delivery_type || null,
-          regionalCarrier: s.regional_carrier || null,
-          waybillTrackingNumber: s.waybill_tracking_number || null,
-          dispatchHub: s.dispatch_hub || null,
-          vehicleType: s.vehicle_type || null,
-          vehiclePlateNumber: s.vehicle_plate_number || null,
-          driverPhone: s.driver_phone || null,
+          fulfillment_type: s.fulfillment_type || 'pickup',
+          delivery_scope: s.delivery_scope || null,
+          delivery_channel: s.delivery_channel || null,
+          addis_delivery_type: s.addis_delivery_type || null,
+          outsourced_provider: s.outsourced_provider || null,
+          regional_carrier: s.regional_carrier || null,
+          waybill_tracking_number: s.waybill_tracking_number || null,
+          dispatch_hub: s.dispatch_hub || null,
+          vehicle_type: s.vehicle_type || null,
+          vehicle_plate_number: s.vehicle_plate_number || null,
+          driver_name: s.driver_name || null,
+          driver_phone: s.driver_phone || null,
+          destinationCity: s.destination_city || null,
+          carrier: s.regional_carrier || s.outsourced_provider || null,
         })));
       }
     }
@@ -359,33 +321,6 @@ export function App() {
   useEffect(() => {
     localStorage.setItem('ttm_crm_current_user', JSON.stringify(currentUser));
   }, [currentUser]);
-  useEffect(() => {
-    localStorage.setItem('ttm_crm_customers', JSON.stringify(customers));
-  }, [customers]);
-  useEffect(() => {
-    localStorage.setItem('ttm_crm_call_logs', JSON.stringify(callLogs));
-  }, [callLogs]);
-  useEffect(() => {
-    localStorage.setItem('ttm_crm_products', JSON.stringify(products));
-  }, [products]);
-  useEffect(() => {
-    localStorage.setItem('ttm_crm_sales', JSON.stringify(sales));
-  }, [sales]);
-  useEffect(() => {
-    localStorage.setItem('ttm_crm_branches', JSON.stringify(branches));
-  }, [branches]);
-  useEffect(() => {
-    localStorage.setItem('ttm_crm_users', JSON.stringify(users));
-  }, [users]);
-  useEffect(() => {
-    localStorage.setItem('ttm_crm_notifications', JSON.stringify(notifications));
-  }, [notifications]);
-  useEffect(() => {
-    localStorage.setItem('ttm_crm_labels', JSON.stringify(labels));
-  }, [labels]);
-  useEffect(() => {
-    localStorage.setItem('ttm_crm_filter_presets', JSON.stringify(filterPresets));
-  }, [filterPresets]);
 
   const toggleTheme = () => setTheme(prev => prev === 'dark' ? 'light' : 'dark');
 
@@ -534,15 +469,22 @@ export function App() {
         sales_rep_name: currentUser.name,
         quantity: newSale.quantity,
         sale_amount_etb: newSale.saleAmount,
+        sale_code: newSale.id,
+        delivery_ticket_id: newSale.deliveryTicketId || null,
+        delivery_ticket_code: newSale.deliveryTicketId || null,
         fulfillment_type: newSale.fulfillment_type || 'pickup',
         delivery_scope: newSale.delivery_scope || null,
+        delivery_channel: newSale.delivery_channel || null,
         addis_delivery_type: newSale.addis_delivery_type || null,
+        outsourced_provider: newSale.outsourced_provider || null,
         regional_carrier: newSale.regional_carrier || null,
         waybill_tracking_number: newSale.waybill_tracking_number || null,
         dispatch_hub: newSale.dispatch_hub || null,
         vehicle_type: newSale.vehicle_type || null,
         vehicle_plate_number: newSale.vehicle_plate_number || null,
+        driver_name: newSale.driver_name || null,
         driver_phone: newSale.driver_phone || null,
+        destination_city: newSale.destinationCity || null,
       };
 
       if (customer) {
@@ -855,8 +797,7 @@ export function App() {
             <ProductStoreView products={products} sales={sales} customers={customers} branches={branches} users={users} theme={theme}
               onAddProduct={(item) => setProducts(prev => [item, ...prev])}
               onUpdateProduct={(updated) => setProducts(prev => prev.map(p => p.id === updated.id ? updated : p))}
-              onDeleteProduct={(id) => setProducts(prev => prev.filter(p => p.id !== id))}
-              onRecordSale={handleRecordSale} />
+              onDeleteProduct={(id) => setProducts(prev => prev.filter(p => p.id !== id))} />
           )}
           {activeTab === 'sales' && (
             <SalesView sales={sales} products={products} customers={customers} branches={branches} users={users} theme={theme}

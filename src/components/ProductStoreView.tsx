@@ -1,9 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { ProductItem, ProductSale, Customer, Branch, User } from '../types/crm';
-import { Package, Plus, DollarSign, Layers, ShoppingBag, Trash2, Download, Filter, Calendar, X, Printer, Edit2, Copy, Search } from 'lucide-react';
+import { Package, Plus, DollarSign, Layers, Trash2, Download, Filter, Calendar, X, Printer, Edit2, Copy, Search } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { generateSaleInvoice } from '../utils/saleInvoice';
-import { generateSaleId, generateDeliveryTicketId } from '../utils/ids';
 
 interface ProductStoreViewProps {
   products: ProductItem[];
@@ -15,25 +14,20 @@ interface ProductStoreViewProps {
   onAddProduct: (item: ProductItem) => void;
   onUpdateProduct: (item: ProductItem) => void;
   onDeleteProduct: (itemId: string) => void;
-  onRecordSale: (sale: ProductSale) => void;
 }
 
 export const ProductStoreView: React.FC<ProductStoreViewProps> = ({
   products, sales, customers, branches, users, theme,
-  onAddProduct, onUpdateProduct, onDeleteProduct, onRecordSale,
+  onAddProduct, onUpdateProduct, onDeleteProduct,
 }) => {
   const isDark = theme === 'dark';
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isSaleModalOpen, setIsSaleModalOpen] = useState(false);
   const [itemName, setItemName] = useState('');
   const [itemDescription, setItemDescription] = useState('');
   const [itemCategory, setItemCategory] = useState('Software');
   const [itemPrice, setItemPrice] = useState(25000);
   const [stockQuantity, setStockQuantity] = useState(50);
-  const [saleCustomerId, setSaleCustomerId] = useState(customers[0]?.id || '');
-  const [saleItemId, setSaleItemId] = useState(products[0]?.id || '');
-  const [saleQuantity, setSaleQuantity] = useState(1);
   const [salesFilterPeriod, setSalesFilterPeriod] = useState<string>('All-Time');
   const [customRangeFrom, setCustomRangeFrom] = useState('');
   const [customRangeTo, setCustomRangeTo] = useState('');
@@ -101,15 +95,6 @@ export const ProductStoreView: React.FC<ProductStoreViewProps> = ({
     setIsAddModalOpen(false);
     setItemName('');
     setItemDescription('');
-  };
-
-  const handleCreateSale = (e: React.FormEvent) => {
-    e.preventDefault();
-    const product = products.find(p => p.id === saleItemId);
-    if (!product) return;
-    const newSale: ProductSale = { id: generateSaleId(), deliveryTicketId: generateDeliveryTicketId(), customerId: saleCustomerId, itemId: saleItemId, quantity: Number(saleQuantity), saleDate: new Date().toISOString().split('T')[0], saleAmount: product.itemPrice * Number(saleQuantity) };
-    onRecordSale(newSale);
-    setIsSaleModalOpen(false);
   };
 
   const handleBulkImport = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -264,9 +249,6 @@ export const ProductStoreView: React.FC<ProductStoreViewProps> = ({
           <button onClick={() => fileInputRef.current?.click()} className={`px-4 py-2.5 ${secBtn} rounded-lg text-sm font-medium flex items-center gap-2 cursor-pointer`}>
             <span>📥 Import Products</span>
           </button>
-          <button onClick={() => setIsSaleModalOpen(true)} className={`px-4 py-2.5 ${secBtn} rounded-lg text-sm font-medium flex items-center gap-2 cursor-pointer`}>
-            <ShoppingBag className="w-4 h-4" /> <span>Record Sale</span>
-          </button>
           <button onClick={() => setIsAddModalOpen(true)} className={`px-4 py-2.5 ${primaryBtn} rounded-lg text-sm font-medium flex items-center gap-2 cursor-pointer`}>
             <Plus className="w-4 h-4" /> <span>Add Product</span>
           </button>
@@ -338,7 +320,7 @@ export const ProductStoreView: React.FC<ProductStoreViewProps> = ({
       </div>
 
       <div className={`rounded-xl border p-6 ${cardBg}`}>
-        <h3 className={`font-bold mb-4 flex items-center gap-2 ${cardText}`}><ShoppingBag className="w-4 h-4 text-amber-400" /> <span>Recent Product Sales Transactions</span></h3>
+        <h3 className={`font-bold mb-4 flex items-center gap-2 ${cardText}`}><Package className="w-4 h-4 text-amber-400" /> <span>Recent Product Sales Transactions</span></h3>
 
         {/* Filter & Export Bar */}
         <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-[#161616] border border-neutral-800 rounded-xl mb-4">
@@ -482,39 +464,6 @@ export const ProductStoreView: React.FC<ProductStoreViewProps> = ({
               <div className="flex items-center justify-end gap-3 pt-4 border-t border-zinc-800/60">
                 <button type="button" onClick={() => setIsAddModalOpen(false)} className={`px-4 py-2 border rounded-lg text-sm font-medium ${isDark ? 'border-zinc-700 text-zinc-300 hover:bg-zinc-800' : 'border-slate-200 text-slate-700 hover:bg-slate-100'}`}>Cancel</button>
                 <button type="submit" className={`px-5 py-2 ${primaryBtn} rounded-lg text-sm font-medium`}>Add Product</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {isSaleModalOpen && (
-        <div className="fixed inset-0 bg-zinc-950/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className={`rounded-2xl shadow-xl max-w-md w-full overflow-hidden border ${modalBg}`}>
-            <div className={`flex items-center justify-between px-6 py-4 border-b ${modalHeader}`}>
-              <h3 className="font-bold text-white">Record Product Sale</h3>
-              <button onClick={() => setIsSaleModalOpen(false)} className="text-zinc-400 hover:text-zinc-200">×</button>
-            </div>
-            <form onSubmit={handleCreateSale} className="p-6 space-y-4">
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider mb-1 text-zinc-400">Customer</label>
-                <select value={saleCustomerId} onChange={(e) => setSaleCustomerId(e.target.value)} className={`w-full ${inputBg} border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600`} required>
-                  {customers.map(c => <option key={c.id} value={c.id}>{c.customerName} ({c.companyName || c.phoneNumber})</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider mb-1 text-zinc-400">Product Item</label>
-                <select value={saleItemId} onChange={(e) => setSaleItemId(e.target.value)} className={`w-full ${inputBg} border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600`} required>
-                  {products.map(p => <option key={p.id} value={p.id}>{p.itemName} — {p.itemPrice.toLocaleString()} ETB</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider mb-1 text-zinc-400">Quantity</label>
-                <input type="number" min="1" value={saleQuantity} onChange={(e) => setSaleQuantity(Number(e.target.value))} className={`w-full ${inputBg} border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600`} required />
-              </div>
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-zinc-800/60">
-                <button type="button" onClick={() => setIsSaleModalOpen(false)} className={`px-4 py-2 border rounded-lg text-sm font-medium ${isDark ? 'border-zinc-700 text-zinc-300 hover:bg-zinc-800' : 'border-slate-200 text-slate-700 hover:bg-slate-100'}`}>Cancel</button>
-                <button type="submit" className={`px-5 py-2 ${primaryBtn} rounded-lg text-sm font-medium`}>Record Sale</button>
               </div>
             </form>
           </div>
